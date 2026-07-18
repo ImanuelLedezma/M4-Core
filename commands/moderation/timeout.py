@@ -1,23 +1,35 @@
+import asyncio
 import discord
 from discord.ext import commands
-from datetime import timedelta
-import re
-
-def parse_duration(s: str) -> timedelta | None:
-    match = re.fullmatch(r"(\d+)(s|m|h|d)", s.lower())
-    if not match:
-        return None
-    value, unit = int(match.group(1)), match.group(2)
-    return timedelta(seconds=value, minutes=0, hours=0, days=0) if unit == "s" else \
-           timedelta(minutes=value) if unit == "m" else \
-           timedelta(hours=value) if unit == "h" else \
-           timedelta(days=value)
+from helpers.time_utils import parse_duration
 
 class Timeout(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="timeout", aliases=["mute"], description="timeout a member for a duration (e.g. 10m, 1h, 2d)")
+    async def _confirm(self, ctx, target: discord.Member, action: str) -> bool:
+        embed = discord.Embed(
+            title=f"⚠ confirm {action}",
+            description=f"are you sure you want to {action} {target.mention}?",
+            color=0xf1c40f
+        )
+        msg = await ctx.send(embed=embed)
+        await msg.add_reaction("✅")
+        await msg.add_reaction("❌")
+        def check(r, u):
+            return u == ctx.author and r.message.id == msg.id and str(r.emoji) in ("✅", "❌")
+        try:
+            r, _ = await self.bot.wait_for("reaction_add", timeout=15.0, check=check)
+        except asyncio.TimeoutError:
+            await msg.edit(embed=discord.Embed(description="⊘ timed out.", color=0xff4500))
+            return False
+        try:
+            await msg.clear_reactions()
+        except (discord.Forbidden, discord.NotFound):
+            pass
+        return str(r.emoji) == "✅"
+
+    @commands.hybrid_command(name="timeout", aliases=["mute"], description="timeout a member for a duration", help="Timeout a member for a duration. Formats: 10s, 5m, 2h, 1d. Max 28 days. Requires Moderate Members permission. Requires confirmation via ✅.")
     @commands.has_permissions(moderate_members=True)
     async def timeout(self, ctx, member: discord.Member, duration: str, *, reason: str = "no reason provided"):
         if member == ctx.author:
@@ -40,6 +52,8 @@ class Timeout(commands.Cog):
             return await ctx.send(embed=discord.Embed(
                 title="✖ too long", description="max timeout is 28 days.", color=discord.Color.red()
             ))
+        if not await self._confirm(ctx, member, f"timeout for {duration}"):
+            return
 
         await member.timeout(delta, reason=reason)
 
@@ -58,7 +72,7 @@ class Timeout(commands.Cog):
             color=discord.Color.green()
         ))
 
-    @commands.command(name="untimeout", aliases=["unmute"], description="remove a timeout from a member")
+    @commands.hybrid_command(name="untimeout", aliases=["unmute"], description="remove a timeout from a member", help="Remove an active timeout from a member. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
     async def untimeout(self, ctx, member: discord.Member):
         if not member.is_timed_out():
@@ -70,5 +84,5 @@ class Timeout(commands.Cog):
             description=f"√ removed timeout from {member.mention}.", color=discord.Color.green()
         ))
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Timeout(bot))

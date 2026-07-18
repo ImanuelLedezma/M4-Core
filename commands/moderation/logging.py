@@ -1,18 +1,11 @@
 import discord
-import os
-import yaml
 from discord.ext import commands
 from collections import defaultdict, deque
+from helpers.config import get_channel_id, get_guild_id
 
-def _load_cfg():
-    path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.yaml"))
-    with open(path) as f:
-        return yaml.safe_load(f)
-
-_cfg = _load_cfg()
-LOG_CHANNEL = _cfg["channels"]["log"]
-CONSOLE_CHANNEL = _cfg["channels"]["console"]
-GUILD_ID = _cfg["guild_id"]
+LOG_CHANNEL = get_channel_id("log")
+CONSOLE_CHANNEL = get_channel_id("console")
+GUILD_ID = get_guild_id()
 
 class Logger(commands.Cog):
     PERMISSION_NAMES = [
@@ -30,7 +23,9 @@ class Logger(commands.Cog):
         "use_embedded_activities","moderate_members","send_voice_messages",
     ]
 
-    def __init__(self, bot):
+    MAX_STATS_ENTRIES = 500
+
+    def __init__(self, bot) -> None:
         self.bot = bot
         self.cmd_usage = defaultdict(int)
         self.user_usage = defaultdict(int)
@@ -79,6 +74,19 @@ class Logger(commands.Cog):
         if ctx.command:
             self.cmd_usage[ctx.command.name] += 1
             self.user_usage[ctx.author.id] += 1
+            if len(self.cmd_usage) > self.MAX_STATS_ENTRIES * 2:
+                self._trim_stats()
+
+    def _trim_stats(self) -> None:
+        threshold = 2
+        for d in (self.cmd_usage, self.user_usage):
+            for k in list(d):
+                if d[k] < threshold:
+                    del d[k]
+            if len(d) > self.MAX_STATS_ENTRIES:
+                top = sorted(d.items(), key=lambda x: x[1], reverse=True)[:self.MAX_STATS_ENTRIES]
+                d.clear()
+                d.update(top)
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
@@ -104,7 +112,7 @@ class Logger(commands.Cog):
             embed.add_field(name="input", value=f"```\n{message.content[:1000]}\n```", inline=False)
             await self.log(message.guild, embed)
 
-    @commands.command()
+    @commands.hybrid_command(description="show command usage statistics", help="Shows the top 5 most used commands and top 5 most active users.")
     async def stats(self, ctx):
         if ctx.guild.id != GUILD_ID:
             return
@@ -115,7 +123,7 @@ class Logger(commands.Cog):
         embed.add_field(name="◈ top users", value="\n".join(f"<@{k}>: {v}" for k, v in top_users) or "none", inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command(description="restore the last deleted message", help="Resends the most recently deleted message in the current channel, including attachments.")
     async def restore(self, ctx):
         if ctx.guild.id != GUILD_ID:
             return
@@ -123,8 +131,11 @@ class Logger(commands.Cog):
             return await ctx.send("nothing to restore")
         msg = self.deleted_cache[-1]
         content = msg["content"] or "*no content*"
-        files = [await a.to_file() for a in msg["attachments"]]
-        await ctx.send(content=content, files=files)
+        try:
+            files = [await a.to_file() for a in msg["attachments"]]
+        except Exception:
+            files = []
+        await ctx.send(content=content, files=files if files else None)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -142,7 +153,7 @@ class Logger(commands.Cog):
 
     @commands.Cog.listener()
     async def on_bulk_message_delete(self, messages):
-        if not messages or messages[0].guild.id != GUILD_ID:
+        if not messages or not messages[0].guild or messages[0].guild.id != GUILD_ID:
             return
         embed = discord.Embed(title="🗑 bulk delete", color=0xff4500, timestamp=discord.utils.utcnow())
         embed.add_field(name="count", value=str(len(messages)))
@@ -150,12 +161,44 @@ class Logger(commands.Cog):
         await self.log(messages[0].guild, embed)
 
     @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        if guild.id != GUILD_ID:
+    async def on_audit_log_entry_create(self, entry):
+        if entry.guild.id != GUILD_ID:
             return
-        embed = discord.Embed(title="🔨 user banned", color=0xff4500)
-        embed.add_field(name="user", value=str(user))
-        await self.log(guild, embed)
+        if entry.action == discord.AuditLogAction.ban:
+            embed = discord.Embed(title="🔨 user banned", color=0xff4500, timestamp=discord.utils.utcnow())
+            embed.add_field(name="user", value=str(entry.target))
+            embed.add_field(name="moderator", value=str(entry.user))
+            if entry.reason:
+                embed.add_field(name="reason", value=entry.reason, inline=False)
+            await self.log(entry.guild, embed)
+        elif entry.action == discord.AuditLogAction.unban:
+            embed = discord.Embed(title="🔓 user unbanned", color=0x57f287, timestamp=discord.utils.utcnow())
+            embed.add_field(name="user", value=str(entry.target))
+            embed.add_field(name="moderator", value=str(entry.user))
+            await self.log(entry.guild, embed)
+        elif entry.action == discord.AuditLogAction.kick:
+            embed = discord.Embed(title="👢 user kicked", color=0xff4500, timestamp=discord.utils.utcnow())
+            embed.add_field(name="user", value=str(entry.target))
+            embed.add_field(name="moderator", value=str(entry.user))
+            if entry.reason:
+                embed.add_field(name="reason", value=entry.reason, inline=False)
+            await self.log(entry.guild, embed)
+        elif entry.action == discord.AuditLogAction.member_role_update:
+            embed = discord.Embed(title="✏ roles updated", color=0xf1c40f, timestamp=discord.utils.utcnow())
+            embed.add_field(name="user", value=str(entry.target))
+            embed.add_field(name="moderator", value=str(entry.user))
+            try:
+                after = entry.changes.after.roles if entry.changes else []
+                before = entry.changes.before.roles if entry.changes else []
+                added = [r for r in after if r not in before]
+                removed = [r for r in before if r not in after]
+                if added:
+                    embed.add_field(name="roles added", value=", ".join(r.name for r in added), inline=False)
+                if removed:
+                    embed.add_field(name="roles removed", value=", ".join(r.name for r in removed), inline=False)
+            except Exception:
+                pass
+            await self.log(entry.guild, embed)
 
     @commands.Cog.listener()
     async def on_member_unban(self, guild, user):
@@ -204,7 +247,7 @@ class Logger(commands.Cog):
         before_overwrites = dict(before.overwrites)
         after_overwrites = dict(after.overwrites)
         for target, after_perm in after_overwrites.items():
-            target_str = target.mention if hasattr(target, "mention") else target.name
+            target_str = target.mention if hasattr(target, "mention") else getattr(target, "name", f"id:{target.id}")
             if target not in before_overwrites:
                 embed.add_field(name=f"➕ new permissions for {target_str}", value="overridden (check audit log)", inline=False)
                 changed = True
@@ -215,7 +258,7 @@ class Logger(commands.Cog):
                     changed = True
         for target in list(before_overwrites.keys()):
             if target not in after_overwrites:
-                target_str = target.mention if hasattr(target, "mention") else target.name
+                target_str = target.mention if hasattr(target, "mention") else getattr(target, "name", f"id:{target.id}")
                 embed.add_field(name=f"➖ permissions removed for {target_str}", value="reset to @everyone", inline=False)
                 changed = True
         if changed:
@@ -229,14 +272,14 @@ class Logger(commands.Cog):
         embed.add_field(name="user", value=member.mention)
         if before.channel is None:
             embed.title = "🔊 joined voice"
-            embed.add_field(name="channel", value=after.channel.mention)
+            embed.add_field(name="channel", value=after.channel.mention if after.channel else "unknown")
         elif after.channel is None:
             embed.title = "🔇 left voice"
-            embed.add_field(name="channel", value=before.channel.mention)
+            embed.add_field(name="channel", value=before.channel.mention if before.channel else "unknown")
         else:
             embed.title = "🔁 moved voice"
-            embed.add_field(name="from", value=before.channel.mention)
-            embed.add_field(name="to", value=after.channel.mention)
+            embed.add_field(name="from", value=before.channel.mention if before.channel else "unknown")
+            embed.add_field(name="to", value=after.channel.mention if after.channel else "unknown")
         await self.log(member.guild, embed)
 
     @commands.Cog.listener()
@@ -304,5 +347,5 @@ class Logger(commands.Cog):
         if changed:
             await self.log(after, embed)
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Logger(bot))

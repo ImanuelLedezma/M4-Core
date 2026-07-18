@@ -1,40 +1,104 @@
+import asyncio
 import discord
 import os
-import yaml
-import asyncio
+import signal
+import sys
 from discord.ext import commands
 from dotenv import load_dotenv
+from helpers.config import load_config
+from helpers.logging import init as init_logging
+from helpers.economy_base import check_ratelimit, RATE_LIMIT_COMMANDS, RATE_LIMIT_WINDOW
+from helpers.blacklist_config import is_blacklisted
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
 
-with open("config.yaml") as f:
-    _cfg = yaml.safe_load(f)
-ALLOWED_GUILD_ID = _cfg["guild_id"]
+REQUIRED_ENV = {
+    "DISCORD_TOKEN": "Discord bot token",
+    "GROQ_KEY": "Groq API key (AI chat, gambling commentary)",
+    "OPENWEATHER_KEY": "OpenWeatherMap API key (!weather)",
+}
+
+MISSING = [f"{k} ({v})" for k, v in REQUIRED_ENV.items() if not os.getenv(k)]
+if MISSING:
+    msg = "missing required environment variables:\n" + "\n".join(f"  ✖ {m}" for m in MISSING)
+    msg += "\n\ncopy .env.example to .env and fill in the values."
+    raise SystemExit(msg)
+
+TOKEN = os.getenv('DISCORD_TOKEN')
+log = init_logging()
+
+# Validate config
+try:
+    cfg = load_config()
+    guild_id = cfg.get("guild_id")
+    if not guild_id:
+        raise SystemExit("✖ config.yaml: guild_id is required")
+    channels = cfg.get("channels", {})
+    for ch in ("log", "console", "ai_chat", "dictionary", "confession", "hall_of_fame", "welcome"):
+        if ch not in channels:
+            log.warning("config.yaml: missing channel '%s' — set it at runtime", ch)
+except Exception as e:
+    raise SystemExit(f"✖ config.yaml error: {e}")
+
+ALLOWED_GUILD_ID = guild_id
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.moderation = True
 
+BANNER = r"""
+  __  __      _       ____
+ |  \/  |    | |     / ___|___  _ __ ___
+ | |\/| |/ _` |_   _| |   / _ \| '__/ _ \
+ | |  | | (_| | |_| | |__| (_) | | |  __/
+ |_|  |_|\__,_|\__, |\____\___/|_|  \___|
+               |___/
+"""
+
 class M4Core(commands.Bot):
     def __init__(self):
         super().__init__(
             command_prefix='!',
             intents=intents,
-            help_command=None
+            help_command=None,
         )
 
     async def setup_hook(self):
+        await super().setup_hook()
+
         async def globally_block_other_guilds(ctx):
-            return ctx.guild is not None and ctx.guild.id == ALLOWED_GUILD_ID
+            if ctx.guild is None:
+                return ctx.command and ctx.command.name in ("confess",)
+            return ctx.guild.id == ALLOWED_GUILD_ID
+
+        async def check_blacklist(ctx):
+            if is_blacklisted(ctx.author.id):
+                raise commands.CheckFailure("⊘ you are blacklisted from using commands.")
+            return True
 
         async def typing_indicator(ctx):
-            await ctx.typing()
+            await ctx.channel.trigger_typing()
+
+        async def economy_ratelimit(ctx):
+            if ctx.command and ctx.command.cog and ctx.command.cog.qualified_name in (
+                "Balance", "Work", "Beg", "Crime", "Daily", "Coinflip",
+                "Blackjack", "Plinko", "Transfers", "Codes", "Stats",
+            ):
+                if check_ratelimit(ctx.author.id):
+                    raise commands.CheckFailure(
+                        f"⊘ slow down! max {RATE_LIMIT_COMMANDS} commands per {RATE_LIMIT_WINDOW}s"
+                    )
+            return True
 
         self.add_check(globally_block_other_guilds)
+        self.add_check(check_blacklist)
         self.before_invoke(typing_indicator)
+        self.add_check(economy_ratelimit)
 
+        loaded = 0
+        failed = 0
+        failed_list: list[str] = []
         for root, dirs, files in os.walk("./commands"):
             for filename in files:
                 if filename.endswith(".py") and filename != "__init__.py":
@@ -42,14 +106,30 @@ class M4Core(commands.Bot):
                     module_path = relative_path.replace(os.sep, ".").removesuffix(".py")
                     try:
                         await self.load_extension(module_path)
-                        print(f"√ loaded: {module_path}")
+                        loaded += 1
                     except Exception as e:
-                        print(f"✖ failed to load {module_path}: {e}")
+                        log.error("failed to load %s: %s", module_path, e)
+                        failed += 1
+                        failed_list.append(module_path)
+
+        cmd_count = len(self.commands)
+        print(BANNER)
+        log.info("loaded %d cogs · %d commands · %d failed", loaded, cmd_count, failed)
+        if failed_list:
+            log.warning("failed modules: %s", ", ".join(failed_list))
 
     async def on_ready(self):
-        print(f'logged in as {self.user} (id: {self.user.id})')
-        print(f'm4-core is now online!')
-        print('------')
+        print(BANNER)
+        log.info("logged in as %s (id: %s)", self.user, self.user.id)
+        log.info("serving %d guilds · %d commands", len(self.guilds), len(self.commands))
+        if not hasattr(self, "_synced"):
+            await self.tree.sync(guild=discord.Object(id=ALLOWED_GUILD_ID))
+            self._synced = True
+            log.info("slash commands synced")
+
+    async def close(self) -> None:
+        log.info("shutting down gracefully...")
+        await super().close()
 
     async def on_command_error(self, ctx, error):
         if hasattr(error, 'handled'):
@@ -78,8 +158,41 @@ class M4Core(commands.Bot):
                 description="one or more arguments are invalid!",
                 color=discord.Color.red()
             ))
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(embed=discord.Embed(
+                description=f"⧖ cooldown: try again in `{error.retry_after:.0f}s`",
+                color=0xf1c40f
+            ), delete_after=5)
+        elif isinstance(error, commands.CheckFailure):
+            msg = str(error) or "⊘ you don't have permission to use this command."
+            embed = discord.Embed(description=msg, color=0xff4500)
+            await ctx.send(embed=embed, delete_after=5)
         else:
-            print(f"unhandled error in {ctx.command}: {error}")
+            log.error("unhandled error in %s: %s", ctx.command or "?", error)
+            await ctx.send(embed=discord.Embed(
+                description="⊘ an unexpected error occurred. the bot owner has been notified.",
+                color=0xff4500
+            ), delete_after=5)
 
 bot = M4Core()
-bot.run(TOKEN)
+
+async def shutdown(signal_name: str):
+    log.info("received %s — shutting down", signal_name)
+    await bot.close()
+
+def handle_signal(signum, frame):
+    sig_name = signal.Signals(signum).name
+    asyncio.create_task(shutdown(sig_name))
+
+if __name__ == "__main__":
+    if sys.platform != "win32":
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(sig, handle_signal)
+
+    try:
+        bot.run(TOKEN)
+    except KeyboardInterrupt:
+        asyncio.run(shutdown("SIGINT"))
+    except Exception as e:
+        log.critical("fatal error: %s", e)
+        raise

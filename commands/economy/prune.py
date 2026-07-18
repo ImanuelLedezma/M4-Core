@@ -1,37 +1,24 @@
-import discord
-import msgpack
-import os
 import time
 from discord.ext import commands, tasks
+from helpers.config import get_config
 from helpers.economy_base import load_bank, save_bank
+from helpers.storage import load, save
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEPARTED_FILE = os.path.normpath(os.path.join(BASE_DIR, "..", "..", "data", "departed.msgpack"))
-PURGE_AFTER = 15 * 86400
+DEPARTED_FILE = "departed.msgpack"
+PURGE_AFTER = get_config("prune.purge_after_days", 15) * 86400
 
 def load_departed():
-    if os.path.exists(DEPARTED_FILE):
-        try:
-            with open(DEPARTED_FILE, "rb") as f:
-                data = msgpack.unpackb(f.read(), raw=False)
-                return data if data else {}
-        except (msgpack.UnpackException, OSError):
-            pass
-    return {}
+    return load(DEPARTED_FILE)
 
 def save_departed(data):
-    os.makedirs(os.path.dirname(DEPARTED_FILE), exist_ok=True)
-    tmp = DEPARTED_FILE + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(msgpack.packb(data, use_bin_type=True))
-    os.replace(tmp, DEPARTED_FILE)
+    save(DEPARTED_FILE, data)
 
 class AutoPurge(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
         self.purge_loop.start()
 
-    def cog_unload(self):
+    def cog_unload(self) -> None:
         self.purge_loop.cancel()
 
     @commands.Cog.listener()
@@ -78,5 +65,5 @@ class AutoPurge(commands.Cog):
     async def before_purge_loop(self):
         await self.bot.wait_until_ready()
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(AutoPurge(bot))

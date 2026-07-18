@@ -11,6 +11,13 @@ server_settings.json
 bot.log
 cloudflared/
 backup.ps1
+logs/
+*.log
+Dockerfile
+docker-compose.yml
+.dockerignore
+start.bat
+immie/
 .DS_Store
 .AppleDouble
 .LSOverride

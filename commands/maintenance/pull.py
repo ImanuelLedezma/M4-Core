@@ -4,8 +4,8 @@ import asyncio
 import os
 from helpers.admins_config import is_admin
 
-class pull(commands.Cog):
-    def __init__(self, bot):
+class Pull(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
     async def reload_all_extensions(self):
@@ -29,7 +29,7 @@ class pull(commands.Cog):
                         results.append(f"✖ `{module_path}`: {e}")
         return results
 
-    @commands.command(name="pull")
+    @commands.hybrid_command(name="pull", description="git pull and reload all cogs", help="Git pull from GitHub and reload all cogs. Usage: !pull (from main), !pull canary. Admin only.")
     async def pull(self, ctx, branch: str = "main"):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))
@@ -83,5 +83,5 @@ class pull(commands.Cog):
             )
             await status_msg.edit(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(pull(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(Pull(bot))

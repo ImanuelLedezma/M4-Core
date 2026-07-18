@@ -1,33 +1,60 @@
-import msgpack
 import os
 import time
 import asyncio
 import discord
+from collections import defaultdict
+from typing import Dict, Any, Tuple
+from discord.ext import commands
+from helpers.storage import load, save
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BANK_FILE = os.path.normpath(os.path.join(BASE_DIR, "..", "data", "bank.msgpack"))
+BANK_FILE = "bank.msgpack"
+AccountData = Dict[str, Any]
 
-def load_bank():
-    if os.path.exists(BANK_FILE):
-        try:
-            with open(BANK_FILE, "rb") as f:
-                data = msgpack.unpackb(f.read(), raw=False)
-                return data if data else {}
-        except (msgpack.UnpackException, OSError):
-            pass
-    return {}
+RATE_LIMIT_COMMANDS = 5
+RATE_LIMIT_WINDOW = 10
+_ratelimit: Dict[int, list[float]] = defaultdict(list)
+_cache: AccountData = {}
+_cache_mtime: float = 0
 
-def save_bank(data):
-    os.makedirs(os.path.dirname(BANK_FILE), exist_ok=True)
-    tmp = BANK_FILE + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(msgpack.packb(data, use_bin_type=True))
-    os.replace(tmp, BANK_FILE)
+def check_ratelimit(user_id: int) -> bool:
+    now = time.time()
+    _ratelimit[user_id] = [t for t in _ratelimit[user_id] if now - t < RATE_LIMIT_WINDOW]
+    if len(_ratelimit[user_id]) >= RATE_LIMIT_COMMANDS:
+        return True
+    _ratelimit[user_id].append(now)
+    return False
+
+def _bank_path() -> str:
+    from helpers.storage import DATA_DIR
+    return os.path.join(DATA_DIR, BANK_FILE)
+
+def load_bank() -> AccountData:
+    global _cache_mtime
+    try:
+        mtime = os.path.getmtime(_bank_path())
+    except OSError:
+        mtime = 0
+    if not _cache or mtime > _cache_mtime:
+        _cache.clear()
+        _cache.update(load(BANK_FILE))
+        _cache_mtime = mtime
+    return _cache
+
+def save_bank(data: AccountData) -> None:
+    global _cache_mtime
+    if data is not _cache:
+        _cache.clear()
+        _cache.update(data)
+    save(BANK_FILE, data)
+    try:
+        _cache_mtime = os.path.getmtime(_bank_path())
+    except OSError:
+        _cache_mtime = 0
     
-def open_account(user_id, data):
-    user_id = str(user_id)
-    if user_id not in data:
-        data[user_id] = {
+def open_account(user_id: int, data: AccountData) -> AccountData:
+    uid = str(user_id)
+    if uid not in data:
+        data[uid] = {
             "wallet": 100,
             "bank": 0,
             "debt": 0,
@@ -41,26 +68,26 @@ def open_account(user_id, data):
     else:
         changed = False
         for key in ("last_work", "last_beg", "last_daily", "last_crime", "last_rob"):
-            if key not in data[user_id]:
-                data[user_id][key] = 0
+            if key not in data[uid]:
+                data[uid][key] = 0
                 changed = True
-        if "debt" not in data[user_id]:
-            data[user_id]["debt"] = 0
+        if "debt" not in data[uid]:
+            data[uid]["debt"] = 0
             changed = True
         if changed:
             save_bank(data)
     return data
 
-def get_cooldown(user_id, data, key, seconds):
+def get_cooldown(user_id: int, data: AccountData, key: str, seconds: int) -> int:
     current_time = time.time()
     last_time = data[str(user_id)].get(key, 0)
     remaining = (last_time + seconds) - current_time
     return max(0, round(remaining))
 
-def set_cooldown(user_id, data, key):
+def set_cooldown(user_id: int, data: AccountData, key: str) -> None:
     data[str(user_id)][key] = time.time()
 
-def apply_loss(user_id, data, amount):
+def apply_loss(user_id: int, data: AccountData, amount: int) -> None:
     uid = str(user_id)
     wallet = data[uid]["wallet"]
     if amount <= wallet:
@@ -69,7 +96,7 @@ def apply_loss(user_id, data, amount):
         data[uid]["debt"] += amount - wallet
         data[uid]["wallet"] = 0
 
-def apply_earnings(user_id, data, amount):
+def apply_earnings(user_id: int, data: AccountData, amount: int) -> Tuple[int, int]:
     uid = str(user_id)
     debt = data[uid]["debt"]
     if debt > 0:
@@ -84,7 +111,7 @@ def apply_earnings(user_id, data, amount):
         data[uid]["wallet"] += amount
         return 0, amount
 
-async def debt_prompt(ctx, bot, data, user_id):
+async def debt_prompt(ctx: commands.Context, bot: commands.Bot, data: AccountData, user_id: int) -> AccountData:
     uid = str(user_id)
     debt = data[uid]["debt"]
     if debt == 0:
@@ -126,13 +153,13 @@ async def debt_prompt(ctx, bot, data, user_id):
         ))
         try:
             await msg.clear_reactions()
-        except:
+        except (discord.Forbidden, discord.NotFound):
             pass
         return data
 
     try:
         await msg.clear_reactions()
-    except:
+    except (discord.Forbidden, discord.NotFound):
         pass
 
     if str(reaction.emoji) == "✅":

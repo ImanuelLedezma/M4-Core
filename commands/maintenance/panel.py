@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import hmac
 import html
+import json
 import os
 import sys
 import pathlib
@@ -217,7 +218,6 @@ async function dispatch(raw){
     case 'pull':    return cmdPull(args[0]||'main');
     case 'pwd':     p(cwd); return;
     case 'cd':      return cmdCd(args[0]);
-    case 'fetch':   return rote_neofetch;
     default:        return cmdShell(raw);
   }
 }
@@ -347,8 +347,10 @@ async def handle_index(request: web.Request):
     return web.Response(content_type="text/html", text=page)
 
 def _json(data: dict, status: int = 200) -> web.Response:
-    import json
     return web.Response(content_type="application/json", text=json.dumps(data), status=status)
+
+def _text(data: str, status: int = 200) -> web.Response:
+    return web.Response(content_type="text/plain", text=data, status=status)
 
 def _auth(request: web.Request):
     if not _check_token(request):
@@ -372,7 +374,7 @@ async def route_logout(request: web.Request):
 async def route_uptime(request: web.Request):
     _auth(request)
     cog: "Panel" = request.app["cog"]
-    d = datetime.datetime.utcnow() - cog.start_time
+    d = datetime.datetime.now(datetime.timezone.utc) - cog.start_time
     h, rem  = divmod(int(d.total_seconds()), 3600)
     m, s    = divmod(rem, 60)
     days, h = divmod(h, 24)
@@ -395,37 +397,20 @@ def _resolve_cwd(cwd: str) -> str:
         return str(base)
 
 async def route_neofetch(request: web.Request):
-    cpu = _get_cpu()
-    kernel = _get_kernel()
-    ip = _get_ip()
-    mem = _get_memory()
-
-    swap = ""
-    try:
-        swap = _get_swap()
-    except:
-        swap = ""
-
-    neofetch = f"""
+    neofetch = """
       _____
      /     \\        root@m4-core
     |  o o  |       -----------------
-    |   ^   |       OS: Linux-Like ARM64
+    |   ^   |       OS: Windows
     |  \\___/ |
-     \\_____/        Kernel: {kernel}
-    /|  |  |\\       Shell: bash
-   /_|__|__|_\\      Resolution: 0x0 (assumed headless)
-      |  |          DE: null
+     \\_____/        Shell: powershell
+    /|  |  |\\       Resolution: 0x0 (assumed headless)
+   /_|__|__|_\\      DE: null
       |  |          WM: null
       |  |          Terminal: web-panel-stdin
      /____\\         Terminal Font: JetBrains Mono
 
-     CPU: {cpu}
-     GPU: Apple M4
-     Memory: {mem}
-     Swap: {swap}
-     Disk (/):
-     Local IP (eth0): {ip}
+     GPU: integrated
      Locale: C.UTF-8, EN.US
 """
 
@@ -509,8 +494,12 @@ async def route_restart(request: web.Request):
 
 async def _do_restart(bot):
     await asyncio.sleep(0.3)
+    await asyncio.create_subprocess_exec(
+        sys.executable, "main.py",
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL
+    )
     await bot.close()
-    os.execv(sys.executable, [sys.executable, "main.py"])
 
 async def route_reload(request: web.Request):
     _auth(request)
@@ -556,11 +545,11 @@ async def route_git_pull(request: web.Request):
 class Panel(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot       = bot
-        self.start_time= datetime.datetime.utcnow()
+        self.start_time= datetime.datetime.now(datetime.timezone.utc)
         self._runner   = None
         self._task     = None
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         self._task = asyncio.create_task(self._start())
 
     async def cog_unload(self):
@@ -568,25 +557,28 @@ class Panel(commands.Cog):
         if self._runner:  await self._runner.cleanup()
 
     async def _start(self):
-        app = web.Application()
-        app["cog"] = self
-        app.router.add_get ("/",             handle_index)
-        app.router.add_post("/api/login",    route_login)
-        app.router.add_post("/api/logout",   route_logout)
-        app.router.add_get ("/api/uptime",   route_uptime)
-        app.router.add_post("/api/shell",    route_shell)
-        app.router.add_post("/api/cd",       route_cd)
-        app.router.add_get ("/api/env",      route_env_list)
-        app.router.add_post("/api/env/get",  route_env_get)
-        app.router.add_post("/api/env/set",  route_env_set)
-        app.router.add_post("/api/env/del",  route_env_del)
-        app.router.add_post("/api/restart",  route_restart)
-        app.router.add_post("/api/reload",   route_reload)
-        app.router.add_post("/api/git/pull", route_git_pull)
-        self._runner = web.AppRunner(app)
-        await self._runner.setup()
-        await web.TCPSite(self._runner, "0.0.0.0", PANEL_PORT).start()
-        print(f"[panel] http://0.0.0.0:{PANEL_PORT}")
+        try:
+            app = web.Application()
+            app["cog"] = self
+            app.router.add_get ("/",             handle_index)
+            app.router.add_post("/api/login",    route_login)
+            app.router.add_post("/api/logout",   route_logout)
+            app.router.add_get ("/api/uptime",   route_uptime)
+            app.router.add_post("/api/shell",    route_shell)
+            app.router.add_post("/api/cd",       route_cd)
+            app.router.add_get ("/api/env",      route_env_list)
+            app.router.add_post("/api/env/get",  route_env_get)
+            app.router.add_post("/api/env/set",  route_env_set)
+            app.router.add_post("/api/env/del",  route_env_del)
+            app.router.add_post("/api/restart",  route_restart)
+            app.router.add_post("/api/reload",   route_reload)
+            app.router.add_post("/api/git/pull", route_git_pull)
+            self._runner = web.AppRunner(app)
+            await self._runner.setup()
+            await web.TCPSite(self._runner, "0.0.0.0", PANEL_PORT).start()
+            import logging; logging.getLogger("panel").info("http://0.0.0.0:%s", PANEL_PORT)
+        except Exception:
+            import logging; logging.getLogger("panel").exception("failed to start panel")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Panel(bot))

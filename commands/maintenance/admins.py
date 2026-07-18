@@ -3,10 +3,10 @@ from discord.ext import commands
 from helpers.admins_config import load_admins, save_admins, is_admin
 
 class Admins(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="admin")
+    @commands.hybrid_command(name="admin", description="add a user to the admin list", help="Add a user to the bot admin list, granting access to maintenance commands. Admin only.")
     async def add_admin(self, ctx, member: discord.Member):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized", color=0xff4500))
@@ -25,7 +25,7 @@ class Admins(commands.Cog):
             color=0x57f287
         ))
 
-    @commands.command(name="rmadmin")
+    @commands.hybrid_command(name="rmadmin", description="remove a user from the admin list", help="Remove a user from the bot admin list. You can't remove yourself. Admin only.")
     async def remove_admin(self, ctx, member: discord.Member):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized", color=0xff4500))
@@ -50,7 +50,7 @@ class Admins(commands.Cog):
             color=0x57f287
         ))
 
-    @commands.command(name="adminlist")
+    @commands.hybrid_command(name="adminlist", description="list all bot admins", help="Shows all users with bot admin access.")
     async def admin_list(self, ctx):
         admins = load_admins()
         if not admins:
@@ -67,5 +67,5 @@ class Admins(commands.Cog):
             color=0x2b2d31
         ))
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Admins(bot))

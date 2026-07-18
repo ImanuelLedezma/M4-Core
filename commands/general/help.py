@@ -1,118 +1,218 @@
+import asyncio
 import discord
 from discord.ext import commands
+from collections import OrderedDict
 
-class help(commands.Cog):
-    def __init__(self, bot):
+COG_MAP = {
+    "commands.general": "general",
+    "commands.utility": "utility",
+    "commands.moderation": "moderation",
+    "commands.economy": "economy",
+    "commands.fun": "fun",
+    "commands.events": "events",
+    "commands.maintenance": "maintenance",
+}
+
+CATEGORY_META = {
+    "general":     {"emoji": "⚙", "label": "general"},
+    "utility":     {"emoji": "🧰", "label": "utility"},
+    "moderation":  {"emoji": "🛡", "label": "moderation"},
+    "economy":     {"emoji": "⌬", "label": "economy"},
+    "fun":         {"emoji": "🎲", "label": "fun"},
+    "events":      {"emoji": "📡", "label": "events"},
+    "maintenance": {"emoji": "⚡", "label": "maintenance"},
+}
+
+CATEGORY_ORDER = ["general", "utility", "moderation", "economy", "fun", "events", "maintenance"]
+COMMANDS_PER_PAGE = 15
+
+class Help(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.hybrid_command(name="help", aliases=["h", "commands"], description="view the full system command list")
-    async def help(self, ctx):
+    def _get_category(self, cmd) -> str:
+        if not cmd.cog:
+            return "other"
+        module = cmd.cog.__class__.__module__
+        parts = module.split(".")
+        prefix = f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else module
+        return COG_MAP.get(prefix, "other")
+
+    def _build_pages(self, bot) -> list[discord.Embed]:
+        grouped: dict[str, list[str]] = OrderedDict()
+        for cmd in sorted(bot.commands, key=lambda c: c.qualified_name):
+            if not cmd.cog:
+                continue
+            cat = self._get_category(cmd)
+            if cat not in grouped:
+                grouped[cat] = []
+            entry = f"`!{cmd.qualified_name}"
+            if cmd.signature:
+                entry += f" {cmd.signature}"
+            entry += "`"
+            if cmd.description:
+                entry += f" · {cmd.description}"
+            grouped[cat].append(entry)
+
+        pages: list[discord.Embed] = []
+        page_entries: list[str] = []
+
+        for cat in CATEGORY_ORDER:
+            if cat not in grouped:
+                continue
+            meta = CATEGORY_META.get(cat, {"emoji": "◈", "label": cat})
+            label = f"{meta['emoji']} {meta['label'].upper()}" if cat == "maintenance" else f"{meta['emoji']} {meta['label']}"
+            if cat == "maintenance":
+                label += " ⌠auth⌡"
+            page_entries.append(f"\n**{label}**\n")
+            for cmd_entry in grouped[cat]:
+                page_entries.append(cmd_entry)
+
+        chunks = [page_entries[i:i + COMMANDS_PER_PAGE] for i in range(0, len(page_entries), COMMANDS_PER_PAGE)]
+        total = len(chunks)
+
+        for idx, chunk in enumerate(chunks):
+            embed = discord.Embed(
+                title="╼ m4-core systems ╾",
+                description="prefix: `!` · currency: `cores`\nuse `!help <command>` for details",
+                color=0x5865f2
+            )
+            field_buffer = ""
+            for line in chunk:
+                if len(field_buffer) + len(line) + 1 > 1024:
+                    embed.add_field(
+                        name=f"page {idx + 1}/{total}" if total > 1 else "commands",
+                        value=field_buffer,
+                        inline=False
+                    )
+                    field_buffer = line + "\n"
+                else:
+                    field_buffer += line + "\n"
+            if field_buffer:
+                embed.add_field(
+                    name=f"page {idx + 1}/{total}" if total > 1 else "commands",
+                    value=field_buffer,
+                    inline=False
+                )
+            embed.set_footer(text="⧖ = cooldown · ⌬ = cores · ⌠perm⌡ = requires permission · ⌠auth⌡ = authorized only")
+            pages.append(embed)
+
+        return pages
+
+    def _command_help_embed(self, cmd: commands.Command) -> discord.Embed:
+        cat = self._get_category(cmd)
+        meta = CATEGORY_META.get(cat, {"emoji": "◈", "label": cat})
+        cat_label = f"{meta['emoji']} {meta['label']}"
+
+        aliases = "`, `".join(cmd.aliases) if cmd.aliases else "none"
+        usage = f"`!{cmd.qualified_name}"
+        if cmd.signature:
+            usage += f" {cmd.signature}"
+        usage += "`"
+
+        perms = []
+        if cmd.checks:
+            for check in cmd.checks:
+                try:
+                    if hasattr(check, "__wrapped__"):
+                        check = check.__wrapped__
+                    name = getattr(check, "__name__", str(check))
+                    perms.append(name.replace("_", " "))
+                except Exception:
+                    pass
+        perm_str = "`, `".join(perms) if perms else "none"
+
         embed = discord.Embed(
-            title="╼ m4-core systems ╾",
-            description="prefix: `!` · currency: `cores`",
+            title=f"`!{cmd.qualified_name}`",
+            description=cmd.description or "no description",
             color=0x5865f2
         )
+        embed.add_field(name="category", value=cat_label, inline=True)
+        embed.add_field(name="usage", value=usage, inline=False)
+        embed.add_field(name="aliases", value=f"`{aliases}`", inline=True)
+        embed.add_field(name="permissions", value=f"`{perm_str}`", inline=True)
+        if cmd.help:
+            embed.add_field(name="help", value=cmd.help[:1024], inline=False)
+        if cmd.parent:
+            embed.add_field(name="parent command", value=f"`!{cmd.parent.qualified_name}`", inline=True)
+        return embed
 
-        embed.add_field(name="◈ general", value=(
-            "`!ping` · check latency\n"
-            "`!uptime` · runtime duration\n"
-            "`!about` · bot information\n"
-            "`!avatar [@user]` · show profile picture\n"
-            "`!roleinfo <role>` · information about a role\n"
-            "`!help` · show this menu"
-        ), inline=False)
+    @commands.hybrid_command(name="help", aliases=["h", "commands"], description="view the full command list. use !help <command> for details")
+    async def help(self, ctx, *, command: str = None):
+        if command:
+            cat_lookup = command.lower().replace("-", "_")
+            if cat_lookup in CATEGORY_META:
+                meta = CATEGORY_META[cat_lookup]
+                grouped: dict[str, list[str]] = OrderedDict()
+                for cmd in sorted(ctx.bot.commands, key=lambda c: c.qualified_name):
+                    if not cmd.cog:
+                        continue
+                    if self._get_category(cmd) == cat_lookup:
+                        grouped.setdefault(cat_lookup, [])
+                        entry = f"`!{cmd.qualified_name}"
+                        if cmd.signature:
+                            entry += f" {cmd.signature}"
+                        entry += "`"
+                        if cmd.description:
+                            entry += f" · {cmd.description}"
+                        grouped[cat_lookup].append(entry)
+                if grouped.get(cat_lookup):
+                    embed = discord.Embed(
+                        title=f"{meta['emoji']} {meta['label']} commands",
+                        description="\n".join(grouped[cat_lookup]),
+                        color=0x5865f2
+                    )
+                    return await ctx.send(embed=embed)
 
-        embed.add_field(name="◈ utility", value=(
-            "`!userinfo [@user]` · detailed member data\n"
-            "`!serverinfo` · detailed guild stats\n"
-            "`!calc <expr>` · evaluate math expressions\n"
-            "`!poll <query>` · create a yes/no poll\n"
-            "`!password [len]` · generate secure string\n"
-            "`!dice [sides]` · roll a random die\n"
-            "`!snipe` · last deleted message\n"
-            "`!timer <sec> [label]` · countdown timer\n"
-            "`!remind <dur> <msg>` · set a reminder\n"
-            "`!afk [reason]` · set afk status\n"
-            "`!translate <text>` · auto-detect & translate to english\n"
-            "`!qr <text>` · generate a qr code\n"
-            "`!dict <term>` · urban dictionary lookup\n"
-            "`!weather <city>` · current weather\n"
-            "`!b64 encode/decode <text>` · base64 encode or decode\n"
-            "`!color <hex>` · color swatch & info\n"
-            "`!mock <text>` · mOcK tExT\n"
-            "`!reverse <text>` · reverse a string\n"
-            "`!ascii <text>` · ascii art text"
-        ), inline=False)
+            cmd = ctx.bot.get_command(command)
+            if not cmd:
+                return await ctx.send(embed=discord.Embed(
+                    description=f"✖ no command or category called `{command}`. try `!help` for the list.",
+                    color=0xff4500
+                ))
+            embed = self._command_help_embed(cmd)
+            return await ctx.send(embed=embed)
 
-        embed.add_field(name="◈ moderation", value=(
-            "`!purge <amt>` · clear messages ⌠perm⌡\n"
-            "`!warn <@user> [reason]` · issue strike ⌠perm⌡\n"
-            "`!warnings <@user>` · view strikes ⌠perm⌡\n"
-            "`!rmwarn <@user> <idx>` · remove strike ⌠perm⌡\n"
-            "`!kick <@user> [reason]` · eject member ⌠perm⌡\n"
-            "`!ban <@user> [reason]` · blacklist user ⌠perm⌡\n"
-            "`!unban <id> [reason]` · lift blacklist ⌠perm⌡\n"
-            "`!blacklist <@user>` · block from commands ⌠perm⌡\n"
-            "`!rmblacklist <@user>` · unblock user ⌠perm⌡\n"
-            "`!timeout <@user> <dur> [reason]` · mute member ⌠perm⌡\n"
-            "`!untimeout <@user>` · remove timeout ⌠perm⌡\n"
-            "`!slowmode <sec>` · set channel slowmode ⌠perm⌡\n"
-            "`!lock` · lock current channel ⌠perm⌡\n"
-            "`!unlock` · unlock current channel ⌠perm⌡"
-        ), inline=False)
+        pages = self._build_pages(ctx.bot)
+        if not pages:
+            return await ctx.send("no commands found.")
 
-        embed.add_field(name="◈ economy", value=(
-            "`!bal [@user]` · check cores\n"
-            "`!dep <amt>` · deposit to bank\n"
-            "`!with <amt>` · withdraw from bank\n"
-            "`!pay <@user> <amt>` · transfer cores\n"
-            "`!work` · labor shift ⧖\n"
-            "`!beg` · request cores ⧖\n"
-            "`!daily` · 24h reward ⧖\n"
-            "`!rob <@user>` · attempt theft ⧖\n"
-            "`!crime` · commit a crime ⧖\n"
-            "`!coinflip <h/t> <amt>` · flip a coin\n"
-            "`!blackjack <amt>` · play blackjack\n"
-            "`!plinko <amt>` · drop the ball\n"
-            "`!redeem <code>` · redeem a code\n"
-            "`!lb` · richest users"
-        ), inline=False)
+        msg = await ctx.send(embed=pages[0])
 
-        embed.add_field(name="◈ fun", value=(
-            "`!ship @u1 @u2` · compatibility check\n"
-            "`!8ball <query>` · ask the magic ball\n"
-            "`!roast [@user]` · burn a member\n"
-            "`!rps <play>` · rock paper scissors\n"
-            "`!hack @user` · simulated breach\n"
-            "`!deathdate [@user]` · predict demise\n"
-            "`!impostor [@user]` · sus level check\n"
-            "`!dumbass [@user]` · issue certificate\n"
-            "`!wyr` · would you rather\n"
-            "`!confess <msg>` · anonymous message (dms only)"
-        ), inline=False)
+        if len(pages) > 1:
+            reactions = ["⬅️", "➡️"]
+            for r in reactions:
+                await msg.add_reaction(r)
 
-        embed.add_field(name="◈ maintenance ⌠auth⌡", value=(
-            "`!eval <code>` · run code remotely\n"
-            "`!pull [branch]` · github sync\n"
-            "`!reload` · reload all cogs\n"
-            "`!restart` · reboot bot process\n"
-            "`!say <msg>` · send as bot\n"
-            "`!admin @user` · add admin\n"
-            "`!rmadmin @user` · remove admin\n"
-            "`!adminlist` · list admins\n"
-            "`!env [name] [value]` · manage env vars\n"
-            "`!issuecode <code> <amt> [uses]` · create redeem code\n"
-            "`!revokecode <code>` · delete redeem code\n"
-            "`!brainwash` · wipe slug's chat history\n"
-            "`!setwelcome <#ch>` · set welcome channel\n"
-            "`!setconfessions <#ch>` · set confessions channel\n"
-            "`!sethof <#ch>` · set hall of fame channel\n"
-            "`!setaichat <#ch>` · set ai chat channel\n"
-            "`!setdictionary <#ch>` · set dictionary channel"
-        ), inline=False)
+            page = 0
 
-        embed.set_footer(text="⧖ = cooldown · ⌬ = cores · ⌠perm⌡ = requires permission · ⌠auth⌡ = authorized only")
-        await ctx.send(embed=embed)
+            def check(reaction, user):
+                return (
+                    user.id == ctx.author.id
+                    and reaction.message.id == msg.id
+                    and str(reaction.emoji) in reactions
+                )
 
-async def setup(bot):
-    await bot.add_cog(help(bot))
+            while True:
+                try:
+                    reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+                    emoji = str(reaction.emoji)
+                    if emoji == "➡️" and page < len(pages) - 1:
+                        page += 1
+                        await msg.edit(embed=pages[page])
+                    elif emoji == "⬅️" and page > 0:
+                        page -= 1
+                        await msg.edit(embed=pages[page])
+                    try:
+                        await msg.remove_reaction(reaction, user)
+                    except (discord.Forbidden, discord.NotFound):
+                        pass
+                except (asyncio.TimeoutError, Exception):
+                    try:
+                        await msg.clear_reactions()
+                    except (discord.Forbidden, discord.NotFound):
+                        pass
+                    break
+
+async def setup(bot) -> None:
+    await bot.add_cog(Help(bot))

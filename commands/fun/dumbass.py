@@ -1,9 +1,8 @@
 import discord
-import msgpack
-import os
 import random
 from discord.ext import commands
-from datetime import datetime
+from discord.ext.commands import cooldown, BucketType
+from helpers.storage import load, save
 
 REASONS = [
     "microwaved a fork",
@@ -31,59 +30,49 @@ REASONS = [
     "laughed at a joke they didn't understand and then had to pretend they got it",
     "started a sentence and then forgot what they were going to say",
     "set two alarms 1 minute apart instead of snoozing",
+    "put their phone in the fridge and looked for it for 20 minutes",
+    "tried to push a pull door for 30 seconds before giving up",
 ]
 
-RANKS = ["bronze", "silver", "gold", "platinum", "diamond", "legendary", "cosmic"]
+RANKS = [
+    ("bronze", 0), ("silver", 3), ("gold", 6), ("platinum", 10),
+    ("diamond", 15), ("legendary", 20), ("cosmic", 30), ("titan", 50),
+]
+
 SEALS = ["🔏 certified", "📜 notarized", "⚖ legally binding", "🏛 government approved", "👁 witnessed"]
-TRACKER_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "dumbass.msgpack"))
+TRACKER_FILE = "dumbass.msgpack"
 
-def load_tracker():
-    if os.path.exists(TRACKER_FILE):
-        try:
-            with open(TRACKER_FILE, "rb") as f:
-                data = msgpack.unpackb(f.read(), raw=False)
-                return data if data else {}
-        except (msgpack.UnpackException, OSError):
-            pass
-    return {}
-
-def save_tracker(data):
-    os.makedirs(os.path.dirname(TRACKER_FILE), exist_ok=True)
-    tmp = TRACKER_FILE + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(msgpack.packb(data, use_bin_type=True))
-    os.replace(tmp, TRACKER_FILE)
-
-def get_rank(count):
-    index = min((count - 1) // 2, len(RANKS) - 1)
-    return RANKS[index]
-
-class dumbass(commands.Cog):
-    def __init__(self, bot):
+class Dumbass(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="dumbass", aliases=["certified", "cert"])
+    def _get_rank(self, count: int) -> str:
+        rank = "bronze"
+        for name, threshold in reversed(RANKS):
+            if count >= threshold:
+                rank = name
+                break
+        return rank
+
+    @commands.hybrid_command(name="dumbass", aliases=["certified", "cert"], description="issue a certificate of dumbass", help="Issue a certificate of dumbass to yourself or someone else. Tracks certifications per user with tiers: bronze, silver, gold, platinum, diamond, legendary, cosmic, titan.")
+    @cooldown(1, 5, BucketType.user)
     async def dumbass(self, ctx, member: discord.Member = None):
         target = member or ctx.author
+        data = load(TRACKER_FILE)
+        gid = str(ctx.guild.id)
+        uid = str(target.id)
 
-        data = load_tracker()
-        guild_id = str(ctx.guild.id)
-        user_id = str(target.id)
+        if gid not in data:
+            data[gid] = {}
+        data[gid][uid] = data[gid].get(uid, 0) + 1
+        count = data[gid][uid]
+        save(TRACKER_FILE, data)
 
-        if guild_id not in data:
-            data[guild_id] = {}
-        if user_id not in data[guild_id]:
-            data[guild_id][user_id] = 0
-
-        data[guild_id][user_id] += 1
-        count = data[guild_id][user_id]
-        save_tracker(data)
-
-        rank = get_rank(count)
+        rank = self._get_rank(count)
         reason = random.choice(REASONS)
         seal = random.choice(SEALS)
         number = random.randint(10000, 99999)
-        date = datetime.utcnow().strftime("%B %d, %Y")
+        date = discord.utils.utcnow().strftime("%B %d, %Y")
 
         embed = discord.Embed(
             title="certificate of dumbass",
@@ -103,5 +92,32 @@ class dumbass(commands.Cog):
         embed.set_footer(text=f"{seal} · issued by {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(dumbass(bot))
+    @commands.hybrid_command(name="dumbasslb", aliases=["dblb", "dumbassleaderboard"], description="show the dumbass leaderboard", help="Shows the top 10 most certified dumbasses in the server with medal rankings.")
+    async def dumbass_leaderboard(self, ctx):
+        data = load(TRACKER_FILE)
+        gid = str(ctx.guild.id)
+        guild_data = data.get(gid, {})
+        if not guild_data:
+            return await ctx.send(embed=discord.Embed(
+                description="no dumbass certifications in this server yet.",
+                color=0x2b2d31
+            ))
+
+        sorted_users = sorted(guild_data.items(), key=lambda x: x[1], reverse=True)[:10]
+        embed = discord.Embed(title="🏆 dumbass leaderboard", color=0xf1c40f)
+        medals = ["🥇", "🥈", "🥉"]
+
+        for i, (uid, count) in enumerate(sorted_users):
+            member = ctx.guild.get_member(int(uid))
+            name = member.display_name if member else "unknown"
+            prefix = medals[i] if i < 3 else f"`{i+1}.`"
+            embed.add_field(
+                name=f"{prefix} {name}",
+                value=f"`{count}` certifications · {self._get_rank(count)} tier",
+                inline=False
+            )
+
+        await ctx.send(embed=embed)
+
+async def setup(bot) -> None:
+    await bot.add_cog(Dumbass(bot))

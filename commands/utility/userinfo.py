@@ -1,35 +1,45 @@
 import discord
-import os
 from discord.ext import commands
+from discord.ext.commands import cooldown, BucketType
 from helpers.economy_base import load_bank, open_account
-from commands.moderation.warn import load_warnings
+from helpers.config import get_config
+from helpers.storage import load
 
-EXCLUDED_ROLE = 1489622224267641043
+WARNINGS_FILE = "warnings.msgpack"
+EXCLUDED_ROLE = get_config("userinfo.excluded_role", 1489622224267641043)
 
-class userinfo(commands.Cog):
-    def __init__(self, bot):
+class UserInfo(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="userinfo", aliases=["ui", "whois", "profile"])
+    @commands.hybrid_command(name="userinfo", aliases=["ui", "whois", "profile"], description="show detailed member information", help="Shows detailed user info: ID, status, badges, top role, nickname, join dates, warnings, economy stats (wallet/bank/debt/net worth), and role list.")
+    @cooldown(1, 3, BucketType.user)
     async def userinfo(self, ctx, member: discord.Member = None):
         member = member or ctx.author
 
-        joined_at = member.joined_at.strftime("%b %d, %Y")
-        created_at = member.created_at.strftime("%b %d, %Y")
+        joined_at = member.joined_at.strftime("%b %d, %Y %H:%M") if member.joined_at else "unknown"
+        created_at = member.created_at.strftime("%b %d, %Y %H:%M")
 
         roles = [
             role.mention for role in reversed(member.roles)
             if role != ctx.guild.default_role and role.id != EXCLUDED_ROLE
         ]
-        top_role = member.top_role.mention if member.top_role != ctx.guild.default_role else "no roles"
+        top_role = member.top_role.mention if member.top_role != ctx.guild.default_role else "none"
 
         badges = []
         if member.bot:
-            badges.append("bot")
+            badges.append("🤖 bot")
         if member.guild_permissions.administrator:
-            badges.append("admin")
+            badges.append("🛡 admin")
+        if member.guild_permissions.manage_guild:
+            badges.append("⚙ mod")
         if member.premium_since:
-            badges.append(f"boosting since {member.premium_since.strftime('%b %d, %Y')}")
+            badges.append("🌟 booster")
+        if member.public_flags.verified_bot_developer:
+            badges.append("👨‍💻 dev")
+
+        status_icon = {"online": "🟢", "idle": "🟡", "dnd": "🔴", "offline": "⚫"}
+        status = status_icon.get(str(member.status), "⚪")
 
         # economy
         data = load_bank()
@@ -38,15 +48,17 @@ class userinfo(commands.Cog):
         wallet = data[uid]["wallet"]
         bank = data[uid]["bank"]
         debt = data[uid]["debt"]
+        net = wallet + bank - debt
 
         # warnings
-        warnings = load_warnings()
-        warn_count = len(warnings.get(str(ctx.guild.id), {}).get(uid, []))
+        warns = load(WARNINGS_FILE)
+        warn_count = len(warns.get(str(ctx.guild.id), {}).get(uid, []))
 
+        color = member.color if member.color.value else 0x2b2d31
         embed = discord.Embed(
-            title=member.name,
+            title=f"{status} {member.name}",
             description=" · ".join(badges) if badges else None,
-            color=member.color if member.color.value else 0x2b2d31
+            color=color
         )
         embed.set_thumbnail(url=member.display_avatar.url)
 
@@ -62,6 +74,7 @@ class userinfo(commands.Cog):
         embed.add_field(name="◈ bank", value=f"⌬ {bank:,}", inline=True)
         if debt > 0:
             embed.add_field(name="⊘ debt", value=f"⌬ {debt:,}", inline=True)
+        embed.add_field(name="▼ net worth", value=f"⌬ {net:,}", inline=False)
 
         if roles:
             role_str = " ".join(roles)
@@ -72,5 +85,5 @@ class userinfo(commands.Cog):
         embed.set_footer(text=f"requested by {ctx.author.name}")
         await ctx.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(userinfo(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(UserInfo(bot))

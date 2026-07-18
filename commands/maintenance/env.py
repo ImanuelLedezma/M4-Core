@@ -1,6 +1,6 @@
+import asyncio
 import discord
 import os
-import re
 from discord.ext import commands
 from helpers.admins_config import is_admin
 
@@ -29,16 +29,16 @@ def mask(value: str) -> str:
     return value[:3] + "***" + value[-3:]
 
 class Env(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="env")
+    @commands.hybrid_command(name="env", aliases=["environment"], description="manage environment variables", help="Read or modify environment variables. Usage: !env (list all), !env KEY (get value), !env KEY VALUE (set value). All actions require confirmation via reaction. Admin only.")
     async def env_cmd(self, ctx, name: str = None, *, value: str = None):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))
 
         if name is None:
-            action_desc = f"read the contents of all environment variables"
+            action_desc = "read the contents of all environment variables"
             action = "read_all"
         elif value is None:
             action_desc = f"read the contents of `{name}`"
@@ -67,14 +67,14 @@ class Env(commands.Cog):
 
         try:
             reaction, _ = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
-        except Exception:
+        except asyncio.TimeoutError:
             await warn_msg.edit(embed=discord.Embed(description="⊘ timed out.", color=0xff4500))
             try: await warn_msg.clear_reactions()
-            except: pass
+            except discord.Forbidden: pass
             return
 
         try: await warn_msg.clear_reactions()
-        except: pass
+        except discord.Forbidden: pass
 
         if str(reaction.emoji) == "❌":
             return await warn_msg.edit(embed=discord.Embed(description="✖ cancelled.", color=0xff4500))
@@ -119,5 +119,5 @@ class Env(commands.Cog):
                 )
                 await warn_msg.edit(embed=embed)
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Env(bot))

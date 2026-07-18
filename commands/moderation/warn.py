@@ -1,38 +1,34 @@
 import discord
-import msgpack
-import os
+from datetime import timedelta
 from discord.ext import commands
+from helpers.storage import load, save
 
-WARNINGS_FILE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "warnings.msgpack"))
+WARNINGS_FILE = "warnings.msgpack"
+AUTO_TIMEOUT_THRESHOLD = 5
 
 def load_warnings():
-    if os.path.exists(WARNINGS_FILE):
-        try:
-            with open(WARNINGS_FILE, "rb") as f:
-                data = msgpack.unpackb(f.read(), raw=False)
-                return data if data else {}
-        except (msgpack.UnpackException, OSError):
-            pass
-    return {}
+    return load(WARNINGS_FILE)
 
 def save_warnings(data):
-    os.makedirs(os.path.dirname(WARNINGS_FILE), exist_ok=True)
-    tmp = WARNINGS_FILE + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(msgpack.packb(data, use_bin_type=True))
-    os.replace(tmp, WARNINGS_FILE)
-    
-class warn(commands.Cog):
-    def __init__(self, bot):
+    save(WARNINGS_FILE, data)
+
+class Warn(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="warn")
+    @commands.hybrid_command(name="warn", description="issue a warning to a member", help="Issue a warning to a member. DMs the user. At 5 warnings, the user is automatically timed out for 1 hour. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
     async def warn(self, ctx, member: discord.Member, *, reason: str = "no reason provided"):
         if member == ctx.author:
-            return await ctx.send(embed=discord.Embed(title="✖ invalid target", description="you can't warn yourself.", color=discord.Color.red()))
+            return await ctx.send(embed=discord.Embed(
+                title="✖ invalid target", description="you can't warn yourself.", color=discord.Color.red()
+            ))
         if member.top_role >= ctx.author.top_role:
-            return await ctx.send(embed=discord.Embed(title="✖ insufficient hierarchy", description="you can't warn someone with an equal or higher role.", color=discord.Color.red()))
+            return await ctx.send(embed=discord.Embed(
+                title="✖ insufficient hierarchy",
+                description="you can't warn someone with an equal or higher role.",
+                color=discord.Color.red()
+            ))
 
         data = load_warnings()
         guild_id = str(ctx.guild.id)
@@ -46,7 +42,7 @@ class warn(commands.Cog):
         data[guild_id][user_id].append({
             "reason": reason,
             "by": str(ctx.author.id),
-            "at": ctx.message.created_at.strftime("%b %d, %Y %H:%M")
+            "at": ctx.message.created_at.isoformat(),
         })
         save_warnings(data)
 
@@ -67,7 +63,15 @@ class warn(commands.Cog):
             color=discord.Color.green()
         ))
 
-    @commands.command(name="warnings", aliases=["warnlist"])
+        if count >= AUTO_TIMEOUT_THRESHOLD and ctx.guild.me.guild_permissions.moderate_members:
+            delta = discord.utils.utcnow() + timedelta(hours=1)
+            await member.timeout(delta, reason=f"auto-timeout: reached {count} warnings")
+            await ctx.send(embed=discord.Embed(
+                description=f"⊘ {member.mention} auto-timed out for 1h (threshold: {AUTO_TIMEOUT_THRESHOLD} warnings)",
+                color=0xff4500
+            ))
+
+    @commands.hybrid_command(name="warnings", aliases=["warnlist"], description="view a member's warnings", help="Shows all warnings for a member with reason, who issued it, and date. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
     async def warnings(self, ctx, member: discord.Member):
         data = load_warnings()
@@ -91,14 +95,14 @@ class warn(commands.Cog):
 
         for i, w in enumerate(warns, 1):
             embed.add_field(
-                name=f"#{i} · {w['at']}",
+                name=f"#{i} · {w['at'][:10]}",
                 value=f"**reason:** {w['reason']}\n**by:** <@{w['by']}>",
                 inline=False
             )
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="rmwarn", aliases=["delwarn", "removewarn"])
+    @commands.hybrid_command(name="rmwarn", aliases=["delwarn", "removewarn"], description="remove a warning by index", help="Remove a specific warning by its index number. Use !warnings to see warning indices. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
     async def rmwarn(self, ctx, member: discord.Member, index: int):
         data = load_warnings()
@@ -130,5 +134,21 @@ class warn(commands.Cog):
             color=discord.Color.green()
         ))
 
-async def setup(bot):
-    await bot.add_cog(warn(bot))
+    @commands.hybrid_command(name="clearwarns", aliases=["clearwarnings", "resetwarns"], description="clear all warnings for a member", help="Delete ALL warnings for a member. No undo. Requires Moderate Members permission.")
+    @commands.has_permissions(moderate_members=True)
+    async def clearwarns(self, ctx, member: discord.Member):
+        data = load_warnings()
+        guild_id = str(ctx.guild.id)
+        user_id = str(member.id)
+
+        if guild_id in data and user_id in data[guild_id]:
+            del data[guild_id][user_id]
+            save_warnings(data)
+
+        await ctx.send(embed=discord.Embed(
+            description=f"√ cleared all warnings for {member.mention}.",
+            color=discord.Color.green()
+        ))
+
+async def setup(bot) -> None:
+    await bot.add_cog(Warn(bot))

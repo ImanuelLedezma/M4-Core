@@ -2,8 +2,10 @@ import discord
 import random
 import asyncio
 from discord.ext import commands
+from discord.ext.commands import cooldown, BucketType
 
 ALWAYS_SUS = {"nyxgoober"}
+SUS_COLORS = {"red", "dark red", "maroon", "crimson", "brown", "orange red"}
 
 VERDICTS_SUS = [
     "extremely suspicious. do not trust",
@@ -11,6 +13,7 @@ VERDICTS_SUS = [
     "the scan doesn't lie, very sus",
     "anomalous readings detected",
     "trust level: zero",
+    "impostor detected. eject immediately",
 ]
 
 VERDICTS_CLEAR = [
@@ -27,14 +30,17 @@ SCAN_STEPS = [
     "⟳ analyzing behavioral patterns...",
     "⟳ checking timeline inconsistencies...",
     "⟳ running anomaly detection...",
+    "⟳ scanning memory banks...",
+    "⟳ verifying neural signature...",
     "⟳ finalizing report...",
 ]
 
-class impostor(commands.Cog):
-    def __init__(self, bot):
+class Impostor(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="impostor", aliases=["sus", "scan"])
+    @commands.hybrid_command(name="impostor", aliases=["sus", "scan"], description="scan a user for imposter activity", help="Run an 8-step impostor scan on a user. Detects sus activity based on name, color, and random factors.")
+    @cooldown(1, 5, BucketType.user)
     async def impostor(self, ctx, member: discord.Member = None):
         target = member or ctx.author
 
@@ -47,17 +53,26 @@ class impostor(commands.Cog):
         msg = await ctx.send(embed=embed)
 
         for step in SCAN_STEPS[1:]:
-            await asyncio.sleep(1.1)
+            await asyncio.sleep(0.9)
             embed.description = step
             await msg.edit(embed=embed)
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.8)
 
-        is_sus = target.name.lower() in ALWAYS_SUS or random.random() < 0.4
-        sus_score = random.randint(85, 99) if is_sus else random.randint(3, 35)
+        is_sus = target.name.lower() in ALWAYS_SUS
+        if not is_sus:
+            try:
+                r, g, b = target.color.to_rgb()
+                if r > 150 and r > g * 1.5 and r > b * 1.5:
+                    is_sus = True
+            except Exception:
+                pass
+        if not is_sus:
+            is_sus = random.random() < 0.35
+
+        sus_score = random.randint(82, 99) if is_sus else random.randint(3, 35)
         verdict = random.choice(VERDICTS_SUS if is_sus else VERDICTS_CLEAR)
-        bar_filled = sus_score // 10
-        bar = "█" * bar_filled + "░" * (10 - bar_filled)
+        bar = "█" * (sus_score // 10) + "░" * (10 - sus_score // 10)
 
         result_embed = discord.Embed(
             title=f"{'⚠ impostor detected' if is_sus else '√ scan complete'}",
@@ -70,5 +85,5 @@ class impostor(commands.Cog):
         result_embed.set_footer(text="scan powered by m4-core anomaly engine")
         await msg.edit(embed=result_embed)
 
-async def setup(bot):
-    await bot.add_cog(impostor(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(Impostor(bot))

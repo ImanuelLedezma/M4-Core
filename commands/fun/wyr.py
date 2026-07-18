@@ -1,6 +1,7 @@
 import discord
 import random
 from discord.ext import commands
+from discord.ext.commands import cooldown, BucketType
 
 DILEMMAS = [
     ("never use the internet again", "never watch TV or movies again"),
@@ -31,13 +32,21 @@ DILEMMAS = [
     ("be able to breathe underwater", "be able to survive in space"),
     ("have a photographic memory but be terrible at math", "be a math genius but have a terrible memory"),
     ("only be able to communicate through song lyrics", "only be able to communicate through movie quotes"),
+    ("have a pet dinosaur but it's the size of a cat", "have a pet cat but it's the size of a dinosaur"),
+    ("always know when someone is lying", "always win at any game"),
+    ("be able to speak to animals", "be able to speak every human language"),
+    ("be invisible but only when no one is looking", "be able to fly but only 2 feet off the ground"),
+    ("have unlimited pizza for life", "have unlimited sushi for life"),
+    ("live in a treehouse", "live in a submarine"),
+    ("be the funniest person in the room", "be the smartest person in the room"),
 ]
 
 class WouldYouRather(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="wyr", aliases=["wouldyourather"], description="get a random would you rather question")
+    @commands.hybrid_command(name="wyr", aliases=["wouldyourather"], description="get a random would you rather question", help="Get a random would-you-rather dilemma with reaction voting so the server can vote on the options.")
+    @cooldown(1, 5, BucketType.user)
     async def wyr(self, ctx):
         a, b = random.choice(DILEMMAS)
         embed = discord.Embed(
@@ -46,7 +55,13 @@ class WouldYouRather(commands.Cog):
         )
         embed.add_field(name="🅐", value=a, inline=True)
         embed.add_field(name="🅑", value=b, inline=True)
+        embed.set_footer(text="react with 🅐 or 🅑 to vote")
         msg = await ctx.send(embed=embed)
+        try:
+            await msg.add_reaction("🅐")
+            await msg.add_reaction("🅑")
+        except (discord.Forbidden, discord.NotFound):
+            pass
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(WouldYouRather(bot))
