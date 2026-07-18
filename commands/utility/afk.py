@@ -1,22 +1,18 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
+from helpers.database import afk_get, afk_set, afk_remove, afk_all
 
-class afk(commands.Cog):
-    def __init__(self, bot):
+class Afk(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
-        self.afk_users = {}
 
-    @commands.command(name="afk")
+    @commands.hybrid_command(name="afk", description="set your status as away", help="Set your status as away. When someone mentions you, the bot will tell them you're AFK with your reason. Your AFK is automatically removed when you send a message. Persists across bot restarts.")
     async def afk(self, ctx, *, reason: str = "afk"):
-        self.afk_users[ctx.author.id] = {
-            "reason": reason,
-            "at": datetime.utcnow()
-        }
+        afk_set(ctx.author.id, reason, discord.utils.utcnow().isoformat())
         await ctx.send(embed=discord.Embed(
             title="√ afk set",
             description=f"{ctx.author.mention} is now afk · **{reason}**",
-            color=discord.Color.blue()
+            color=0x5865f2
         ))
 
     @commands.Cog.listener()
@@ -24,26 +20,31 @@ class afk(commands.Cog):
         if message.author.bot:
             return
 
-        if message.author.id in self.afk_users:
-            del self.afk_users[message.author.id]
+        existing = afk_get(message.author.id)
+        if existing:
+            afk_remove(message.author.id)
             await message.channel.send(embed=discord.Embed(
                 title="√ welcome back",
                 description=f"{message.author.mention} your afk has been removed.",
-                color=discord.Color.green()
+                color=0x57f287
             ))
 
         if message.mentions:
             for member in message.mentions:
-                if member.id in self.afk_users:
-                    data = self.afk_users[member.id]
-                    delta = datetime.utcnow() - data["at"]
-                    mins = int(delta.total_seconds() // 60)
-                    time_str = f"`{mins}m ago`" if mins > 0 else "`just now`"
+                entry = afk_get(member.id)
+                if entry:
+                    try:
+                        at = discord.utils.parse_time(entry["at"])
+                        delta = discord.utils.utcnow() - at
+                        mins = int(delta.total_seconds() // 60)
+                        time_str = f"`{mins}m ago`" if mins > 0 else "`just now`"
+                    except Exception:
+                        time_str = "`unknown`"
                     await message.channel.send(embed=discord.Embed(
                         title="⌖ user is afk",
-                        description=f"{member.mention} is afk · **{data['reason']}** · {time_str}",
-                        color=discord.Color.yellow()
+                        description=f"{member.mention} is afk · **{entry['reason']}** · {time_str}",
+                        color=0xf1c40f
                     ))
 
-async def setup(bot):
-    await bot.add_cog(afk(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(Afk(bot))

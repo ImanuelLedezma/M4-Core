@@ -1,9 +1,8 @@
 import discord
 import random
-import json
-import os
 from discord.ext import commands
-from datetime import datetime
+from discord.ext.commands import cooldown, BucketType
+from helpers.database import dumbass_increment, dumbass_leaderboard
 
 REASONS = [
     "microwaved a fork",
@@ -31,56 +30,43 @@ REASONS = [
     "laughed at a joke they didn't understand and then had to pretend they got it",
     "started a sentence and then forgot what they were going to say",
     "set two alarms 1 minute apart instead of snoozing",
+    "put their phone in the fridge and looked for it for 20 minutes",
+    "tried to push a pull door for 30 seconds before giving up",
 ]
 
-RANKS = ["bronze", "silver", "gold", "platinum", "diamond", "legendary", "cosmic"]
+RANKS = [
+    ("bronze", 0), ("silver", 3), ("gold", 6), ("platinum", 10),
+    ("diamond", 15), ("legendary", 20), ("cosmic", 30), ("titan", 50),
+]
+
 SEALS = ["🔏 certified", "📜 notarized", "⚖ legally binding", "🏛 government approved", "👁 witnessed"]
-TRACKER_FILE = "dumbass.json"
 
-def load_tracker():
-    if os.path.exists(TRACKER_FILE):
-        with open(TRACKER_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_tracker(data):
-    with open(TRACKER_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-def get_rank(count):
-    index = min((count - 1) // 2, len(RANKS) - 1)
-    return RANKS[index]
-
-class dumbass(commands.Cog):
-    def __init__(self, bot):
+class Dumbass(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="dumbass", aliases=["certified", "cert"])
+    def _get_rank(self, count: int) -> str:
+        rank = "bronze"
+        for name, threshold in reversed(RANKS):
+            if count >= threshold:
+                rank = name
+                break
+        return rank
+
+    @commands.hybrid_command(name="dumbass", aliases=["certified", "cert"], description="issue a certificate of dumbass", help="Issue a certificate of dumbass to yourself or someone else. Tracks certifications per user with tiers: bronze, silver, gold, platinum, diamond, legendary, cosmic, titan.")
+    @cooldown(1, 5, BucketType.user)
     async def dumbass(self, ctx, member: discord.Member = None):
         target = member or ctx.author
-
-        data = load_tracker()
-        guild_id = str(ctx.guild.id)
-        user_id = str(target.id)
-
-        if guild_id not in data:
-            data[guild_id] = {}
-        if user_id not in data[guild_id]:
-            data[guild_id][user_id] = 0
-
-        data[guild_id][user_id] += 1
-        count = data[guild_id][user_id]
-        save_tracker(data)
-
-        rank = get_rank(count)
+        count = dumbass_increment(ctx.guild.id, target.id)
+        rank = self._get_rank(count)
         reason = random.choice(REASONS)
         seal = random.choice(SEALS)
         number = random.randint(10000, 99999)
-        date = datetime.utcnow().strftime("%B %d, %Y")
+        date = discord.utils.utcnow().strftime("%B %d, %Y")
 
         embed = discord.Embed(
             title="certificate of dumbass",
-            color=discord.Color.yellow()
+            color=0xf1c40f
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.description = (
@@ -96,5 +82,29 @@ class dumbass(commands.Cog):
         embed.set_footer(text=f"{seal} · issued by {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(dumbass(bot))
+    @commands.hybrid_command(name="dumbasslb", aliases=["dblb", "dumbassleaderboard"], description="show the dumbass leaderboard", help="Shows the top 10 most certified dumbasses in the server with medal rankings.")
+    async def dumbass_leaderboard(self, ctx):
+        top = dumbass_leaderboard(ctx.guild.id)
+        if not top:
+            return await ctx.send(embed=discord.Embed(
+                description="no dumbass certifications in this server yet.",
+                color=0x2b2d31
+            ))
+
+        embed = discord.Embed(title="🏆 dumbass leaderboard", color=0xf1c40f)
+        medals = ["🥇", "🥈", "🥉"]
+
+        for i, entry in enumerate(top):
+            member = ctx.guild.get_member(entry["user_id"])
+            name = member.display_name if member else "unknown"
+            prefix = medals[i] if i < 3 else f"`{i+1}.`"
+            embed.add_field(
+                name=f"{prefix} {name}",
+                value=f"`{entry['count']}` certifications · {self._get_rank(entry['count'])} tier",
+                inline=False
+            )
+
+        await ctx.send(embed=embed)
+
+async def setup(bot) -> None:
+    await bot.add_cog(Dumbass(bot))

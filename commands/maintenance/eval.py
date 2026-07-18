@@ -2,36 +2,21 @@ import discord
 import asyncio
 import io
 import os
-import re
 import sys
 import traceback
 import yaml
 from discord.ext import commands
+from helpers.admins_config import is_admin
 
 MAX_EMBED = 4000
 
 def _load_cfg():
     path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.yaml"))
     with open(path) as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 _cfg = _load_cfg()
-CONSOLE_CHANNEL_ID = _cfg["channels"]["console"]
-
-_ADMINS_FILE = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "admins.yaml")
-)
-
-def _is_admin_raw(user_id: int) -> bool:
-    try:
-        with open(_ADMINS_FILE, "r") as f:
-            for line in f:
-                m = re.match(r"^\s*-\s*(\d+)", line)
-                if m and int(m.group(1)) == user_id:
-                    return True
-    except OSError:
-        pass
-    return False
+CONSOLE_CHANNEL_ID = _cfg.get("channels", {}).get("console", 0)
 
 def _truncate(text: str) -> str:
     if len(text) <= MAX_EMBED:
@@ -86,9 +71,9 @@ class Eval(commands.Cog):
         embed.set_footer(text=f"exit {'0' if success else '1'}")
         await msg.edit(embed=embed)
 
-    @commands.command(name="eval")
+    @commands.hybrid_command(name="eval", description="execute python code or shell commands", help="Execute Python code or shell commands remotely. Also listens in the configured console channel. Output is truncated to 4000 chars. Admin only.")
     async def eval_cmd(self, ctx, *, code: str):
-        if not _is_admin_raw(ctx.author.id):
+        if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))
         await self._run_code(ctx, code)
 
@@ -98,7 +83,7 @@ class Eval(commands.Cog):
             return
         if message.channel.id != CONSOLE_CHANNEL_ID:
             return
-        if not _is_admin_raw(message.author.id):
+        if not is_admin(message.author.id):
             return
         ctx = await self.bot.get_context(message)
         await self._run_code(ctx, message.content)
@@ -109,5 +94,5 @@ class Eval(commands.Cog):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(embed=discord.Embed(description="⊘ usage: `!eval <code or shell command>`", color=0xff4500))
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Eval(bot))

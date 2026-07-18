@@ -1,6 +1,7 @@
 import discord
 import random
 from discord.ext import commands
+from discord.ext.commands import cooldown, BucketType
 from datetime import datetime, timedelta
 
 CAUSES = [
@@ -34,47 +35,55 @@ CAUSES = [
     "crushed by an avalanche of unwashed laundry",
     "was overwhelmed by the sheer number of streaming services available",
     "was fatally distracted by a butterfly and wandered into traffic",
+    "perished while trying to fold a fitted sheet",
+    "died of embarrassment after a typo in a work email",
+    "was taken out by a stray shopping cart",
+    "expired while waiting for a loading screen",
+    "vanished while looking for their other sock",
 ]
 
-class deathdate(commands.Cog):
-    def __init__(self, bot):
+LAST_WORDS = [
+    '"oh no!"', '"i wasnt ready for this."', '"wait, what?"',
+    '"i probably shouldve seen this coming."', '"hold on let me google this."',
+    '"thats fine."', '"can we reschedule?"', '"technically im fine."',
+    '"no wait—"', '"i have a bad feeling about this."', '"uh, this is awkward."',
+    '"im not sure how to feel about this."', '"well, this is unexpected."',
+    '"it was worth it."', '"at least i had snacks."', '"ill be fine. probably."',
+    '"bruh."', '"worth it."', '"so... no head?"',
+]
+
+class DeathDate(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="deathdate", aliases=["death", "rip"])
+    @commands.hybrid_command(name="deathdate", aliases=["death", "rip"], description="predict when someone will die", help="Generate a fictional death certificate with date, age, cause of death, last words, and zodiac sign. All fictional. Probably.")
+    @cooldown(1, 5, BucketType.user)
     async def deathdate(self, ctx, member: discord.Member = None):
         target = member or ctx.author
+        now = datetime.now()
 
-        future = datetime.now() + timedelta(days=random.randint(1, 365 * 60))
+        days = random.randint(1, 365 * 60)
+        future = now + timedelta(days=days)
         date_str = future.strftime("%B %d, %Y")
-        age = future.year - datetime.now().year
+        age = future.year - target.created_at.year
         cause = random.choice(CAUSES)
-        last_words = random.choice([
-            "oh no!\"",
-            "i wasn't ready for this.\"",
-            "\"wait, what?\"",
-            "\"i probably should've seen this coming.\"",
-            "\"hold on let me google this.\"",
-            "\"that's fine.\"",
-            "\"can we reschedule?\"",
-            "\"technically i'm fine.\"",
-            "\"no wait—\"",
-            "\"i have a bad feeling about this.\"",
-            "\"uh, this is awkward.\"",
-            "\"i'm not sure how to feel about this.\"",
-             "\"well, this is unexpected.\"",
-        ])
+        last = random.choice(LAST_WORDS)
+
+        zodiac = ["aries", "taurus", "gemini", "cancer", "leo", "virgo",
+                   "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"][future.month - 1]
 
         embed = discord.Embed(
             title=f"☠ death certificate · {target.display_name}",
-            color=discord.Color.dark_gray()
+            color=0x2b2d31
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="date of passing", value=f"`{date_str}`", inline=True)
-        embed.add_field(name="age", value=f"`{age}`", inline=True)
+        embed.add_field(name="age at passing", value=f"`{age}`", inline=True)
+        embed.add_field(name="zodiac sign", value=f"`{zodiac}`", inline=True)
         embed.add_field(name="cause of death", value=cause, inline=False)
-        embed.add_field(name="last words", value=last_words, inline=False)
+        embed.add_field(name="last words", value=last, inline=False)
         embed.set_footer(text="fictional. probably.")
         await ctx.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(deathdate(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(DeathDate(bot))

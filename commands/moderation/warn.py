@@ -1,127 +1,65 @@
 import discord
-import json
-import os
 from discord.ext import commands
+from helpers.database import warn_add, warn_count, warn_list, warn_remove
+from helpers.config import get_channel_id
 
-WARNINGS_FILE = "warnings.json"
+LOG_CHANNEL_ID = get_channel_id("log")
 
-def load_warnings():
-    if os.path.exists(WARNINGS_FILE):
-        with open(WARNINGS_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_warnings(data):
-    with open(WARNINGS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-class warn(commands.Cog):
-    def __init__(self, bot):
+class Warn(commands.Cog):
+    def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.command(name="warn")
+    async def _log(self, guild, embed):
+        if not guild:
+            return
+        ch = guild.get_channel(LOG_CHANNEL_ID)
+        if ch:
+            await ch.send(embed=embed)
+
+    @commands.hybrid_command(name="warn", description="warn a user", help="Warn a user with a reason. Tracks total warnings per user. Use !warnings to view. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
-    async def warn(self, ctx, member: discord.Member, *, reason: str = "no reason provided"):
-        if member == ctx.author:
-            return await ctx.send(embed=discord.Embed(title="✖ invalid target", description="you can't warn yourself.", color=discord.Color.red()))
-        if member.top_role >= ctx.author.top_role:
-            return await ctx.send(embed=discord.Embed(title="✖ insufficient hierarchy", description="you can't warn someone with an equal or higher role.", color=discord.Color.red()))
-
-        data = load_warnings()
-        guild_id = str(ctx.guild.id)
-        user_id = str(member.id)
-
-        if guild_id not in data:
-            data[guild_id] = {}
-        if user_id not in data[guild_id]:
-            data[guild_id][user_id] = []
-
-        data[guild_id][user_id].append({
-            "reason": reason,
-            "by": str(ctx.author.id),
-            "at": ctx.message.created_at.strftime("%b %d, %Y %H:%M")
-        })
-        save_warnings(data)
-
-        count = len(data[guild_id][user_id])
-
-        try:
-            await member.send(embed=discord.Embed(
-                title=f"⚠ warning in {ctx.guild.name}",
-                description=f"**reason:** {reason}\n**warned by:** {ctx.author.name}\n**total warnings:** `{count}`",
-                color=discord.Color.yellow()
+    async def warn(self, ctx, member: discord.Member, *, reason: str = "no reason"):
+        if member.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
+            return await ctx.send(embed=discord.Embed(
+                description="⊘ you can't warn someone with an equal or higher role.", color=0xff4500
             ))
-        except discord.Forbidden:
-            pass
+
+        warn_add(ctx.guild.id, member.id, reason, ctx.author.id)
+        total = warn_count(ctx.guild.id, member.id)
 
         await ctx.send(embed=discord.Embed(
-            title="√ warned",
-            description=f"warned {member.mention} · **{reason}**\ntotal warnings: `{count}`",
-            color=discord.Color.green()
+            title="√ warning issued",
+            description=f"{member.mention} has been warned · **{reason}**\nthis is warning **#{total}**",
+            color=0xf1c40f
         ))
+        await self._log(ctx.guild, discord.Embed(
+            title="⚠ warning issued", color=0xf1c40f, timestamp=discord.utils.utcnow()
+        ).add_field(name="user", value=member.mention).add_field(name="moderator", value=ctx.author.mention).add_field(name="reason", value=reason, inline=False).add_field(name="total warnings", value=str(total)))
 
-    @commands.command(name="warnings", aliases=["warnlist"])
+    @commands.hybrid_command(name="warnings", aliases=["warns"], description="view warnings for a user", help="Shows all warnings issued to a user with ID, reason, and moderator. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
     async def warnings(self, ctx, member: discord.Member):
-        data = load_warnings()
-        guild_id = str(ctx.guild.id)
-        user_id = str(member.id)
-
-        warns = data.get(guild_id, {}).get(user_id, [])
-
+        warns = warn_list(ctx.guild.id, member.id)
         if not warns:
             return await ctx.send(embed=discord.Embed(
-                title="warnings",
-                description=f"{member.mention} has no warnings.",
-                color=discord.Color.blue()
+                description=f"{member.mention} has no warnings.", color=0x2b2d31
             ))
 
-        embed = discord.Embed(
-            title=f"warnings · {member.name}",
-            description=f"total: `{len(warns)}`",
-            color=discord.Color.yellow()
-        )
-
-        for i, w in enumerate(warns, 1):
-            embed.add_field(
-                name=f"#{i} · {w['at']}",
-                value=f"**reason:** {w['reason']}\n**by:** <@{w['by']}>",
-                inline=False
-            )
-
+        lines = []
+        for w in warns:
+            mod = ctx.guild.get_member(w["moderator_id"])
+            mod_name = mod.mention if mod else f"`{w['moderator_id']}`"
+            lines.append(f"`#{w['id']}` · {w['reason']} · by {mod_name}")
+        embed = discord.Embed(title=f"warnings for {member.display_name}", description="\n".join(lines), color=0xf1c40f)
         await ctx.send(embed=embed)
 
-    @commands.command(name="rmwarn", aliases=["delwarn", "removewarn"])
+    @commands.hybrid_command(name="delwarn", aliases=["removewarn", "unwarn"], description="remove a specific warning by id", help="Remove a warning by its ID number. Use !warnings to find the ID. Requires Moderate Members permission.")
     @commands.has_permissions(moderate_members=True)
-    async def rmwarn(self, ctx, member: discord.Member, index: int):
-        data = load_warnings()
-        guild_id = str(ctx.guild.id)
-        user_id = str(member.id)
+    async def delwarn(self, ctx, warn_id: int):
+        if warn_remove(warn_id):
+            await ctx.send(embed=discord.Embed(description=f"√ removed warning `#{warn_id}`", color=0x57f287))
+        else:
+            await ctx.send(embed=discord.Embed(description=f"⊘ warning `#{warn_id}` not found.", color=0xff4500))
 
-        warns = data.get(guild_id, {}).get(user_id, [])
-
-        if not warns:
-            return await ctx.send(embed=discord.Embed(
-                title="✖ no warnings",
-                description=f"{member.mention} has no warnings.",
-                color=discord.Color.red()
-            ))
-
-        if index < 1 or index > len(warns):
-            return await ctx.send(embed=discord.Embed(
-                title="✖ invalid index",
-                description=f"provide a number between `1` and `{len(warns)}`.",
-                color=discord.Color.red()
-            ))
-
-        removed = data[guild_id][user_id].pop(index - 1)
-        save_warnings(data)
-
-        await ctx.send(embed=discord.Embed(
-            title="√ warning removed",
-            description=f"removed warning `#{index}` from {member.mention}\n**reason was:** {removed['reason']}",
-            color=discord.Color.green()
-        ))
-
-async def setup(bot):
-    await bot.add_cog(warn(bot))
+async def setup(bot) -> None:
+    await bot.add_cog(Warn(bot))

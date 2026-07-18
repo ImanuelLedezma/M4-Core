@@ -8,3 +8,17 @@ channels:
   confession: 1491085704829341747
   hall_of_fame: 1491359053274939503
   welcome: 1483246511700578439
+
+lock:
+  revoke_roles:
+    - 1490701432456876163
+    - 1483259650983067781
+
+prune:
+  purge_after_days: 15
+
+codedrop:
+  channel_id: 1491254006117564496
+
+userinfo:
+  excluded_role: 1489622224267641043

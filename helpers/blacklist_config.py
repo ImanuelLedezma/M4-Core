@@ -1,17 +1,14 @@
-import json
-import os
+from helpers.database import blacklist_has, blacklist_add, blacklist_remove, blacklist_all
 
-BLACKLIST_FILE = "blacklist.json"
+def load_blacklist() -> set[int]:
+    return set(blacklist_all())
 
-def load_blacklist() -> set:
-    if not os.path.exists(BLACKLIST_FILE):
-        return set()
-    with open(BLACKLIST_FILE, "r") as f:
-        return set(json.load(f))
-
-def save_blacklist(blacklist: set):
-    with open(BLACKLIST_FILE, "w") as f:
-        json.dump(list(blacklist), f)
+def save_blacklist(blacklist: set[int]) -> None:
+    current = set(blacklist_all())
+    for uid in blacklist - current:
+        blacklist_add(uid)
+    for uid in current - blacklist:
+        blacklist_remove(uid)
 
 def is_blacklisted(user_id: int) -> bool:
-    return user_id in load_blacklist()
+    return blacklist_has(user_id)

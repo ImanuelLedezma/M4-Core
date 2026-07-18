@@ -1,22 +1,20 @@
 import yaml
 import os
+from typing import Set, Any
 
-ADMINS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "admins.yaml")
+ADMINS_FILE: str = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "admins.yaml"))
+DEFAULT_ADMINS: Set[int] = {779653730978103306, 500683600614785025}
 
-def _resolve():
-    return os.path.normpath(ADMINS_FILE)
-
-def load_admins() -> set:
-    path = _resolve()
-    if not os.path.exists(path):
-        return set()
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
+def load_admins() -> Set[int]:
+    if not os.path.exists(ADMINS_FILE):
+        save_admins(DEFAULT_ADMINS)
+        return DEFAULT_ADMINS
+    with open(ADMINS_FILE, "r") as f:
+        data: Any = yaml.safe_load(f) or {}
     return set(data.get("admins", []))
 
-def save_admins(admins: set):
-    path = _resolve()
-    with open(path, "w") as f:
+def save_admins(admins: Set[int]) -> None:
+    with open(ADMINS_FILE, "w") as f:
         yaml.dump({"admins": sorted(admins)}, f)
 
 def is_admin(user_id: int) -> bool:
