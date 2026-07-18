@@ -10,6 +10,7 @@ __pycache__/
 server_settings.json
 bot.log
 cloudflared/
+backup.ps1
 .DS_Store
 .AppleDouble
 .LSOverride
