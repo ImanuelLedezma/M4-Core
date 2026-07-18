@@ -16,7 +16,7 @@ class Rob(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.hybrid_command(name="rob", description="attempt to steal cores from a user's wallet", help="Try to rob another user's wallet. Base 45% success rate — steal up to 25% of their wallet (max 1000). Fail and you pay a fine to your victim. Target must have at least 150 cores. 5min cooldown. Extra Luck (+15% success), Stealthy Shoes (halve fines +10% steal), Invisibility Potion (+5% success).")
+    @commands.hybrid_command(name="rob", description="attempt to steal cores from a user's wallet", help="Try to rob another user's wallet. Base 45% success — steal up to 25% of wallet (max 1000). Fail and pay a fine. Target needs 150+ cores. 5min cooldown. Items: Extra Luck (+15%), Stealthy Shoes (+15% steal), Donut (halve fines), Fake License (-1min cd), Alarm System (30% double fine on victim), Invisibility Potion (+5%).")
     async def rob(self, ctx, member: discord.Member):
         if member.id == ctx.author.id:
             return await ctx.send("⊘ you can't rob yourself!")
@@ -48,6 +48,11 @@ class Rob(commands.Cog):
         has_luck = user_has_item(ctx.author.id, "extra_luck")
         has_stealth = user_has_item(ctx.author.id, "stealthy_shoes")
         has_invis = user_has_item(ctx.author.id, "invisibility_potion")
+        has_donut = user_has_item(ctx.author.id, "donut")
+        has_license = user_has_item(ctx.author.id, "fake_license")
+
+        if has_license:
+            remaining = get_cooldown(ctx.author.id, data, "last_rob", ROB_COOLDOWN - 60)
 
         success_chance = 0.45
         if has_luck:
@@ -58,7 +63,7 @@ class Rob(commands.Cog):
         if random.random() < success_chance:
             max_steal = min(1000, int(data[victim_id]["wallet"] * 0.25))
             if has_stealth:
-                max_steal = min(1100, int(max_steal * 1.1))
+                max_steal = min(1150, int(max_steal * 1.15))
             stolen = random.randint(50, max(50, max_steal))
             data[victim_id]["wallet"] -= stolen
             debt_paid, to_wallet = apply_earnings(robber_id, data, stolen)
@@ -70,16 +75,21 @@ class Rob(commands.Cog):
                 desc += f"\n⌬ {debt_paid:,} went toward your debt"
             embed = discord.Embed(description=desc, color=0x57f287)
         else:
+            has_alarm = user_has_item(member.id, "alarm_system")
             fine = random.randint(100, 500)
-            if has_stealth:
+            if has_donut:
                 fine = max(50, fine // 2)
+            if has_alarm and random.random() < 0.3:
+                fine *= 2
+                scene = f"the alarm system triggered! {random.choice(BUST_SCENES)}"
+            else:
+                scene = random.choice(BUST_SCENES)
             apply_loss(robber_id, data, fine)
             data[victim_id]["wallet"] += fine
             save_bank(data)
             add_tx(ctx.author.id, "loss", -fine, f"busted robbing {member.name}")
             add_tx(member.id, "earn", fine, f"compensation from {ctx.author.name}")
             debt = data[robber_id]["debt"]
-            scene = random.choice(BUST_SCENES)
             desc = f"⊘ **busted!**\n{scene}. fined **⌬ {fine:,}** to {member.display_name.lower()}"
             if debt > 0:
                 desc += f"\n⌬ {debt:,} now in debt"

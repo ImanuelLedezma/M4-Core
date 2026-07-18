@@ -2,6 +2,7 @@ import discord
 import random
 from discord.ext import commands
 from helpers.economy_base import load_bank, save_bank, open_account, apply_loss, apply_earnings, debt_prompt
+from commands.economy.shop import user_has_item
 
 class Coinflip(commands.Cog):
     def __init__(self, bot) -> None:
@@ -36,7 +37,11 @@ class Coinflip(commands.Cog):
                 color=0xff4500
             ))
 
-        result = random.choice(["heads", "tails"])
+        has_socks = user_has_item(ctx.author.id, "lucky_socks")
+        if has_socks:
+            result = "heads" if random.random() < 0.55 else "tails"
+        else:
+            result = random.choice(["heads", "tails"])
         won = result == side
         coin = "🪙"
         stats = {

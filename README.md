@@ -5,10 +5,16 @@ Discord bot for the Immie server, built with discord.py and cogs.
 ## Features
 
 - **Economy system** (cores currency, gambling, transfers, rob, crime, daily, work, begging)
-- **Shop system** (`!shop` / `!buy` / `!inventory`) — buy special items that modify command behavior:
-  - *Extra Luck* — +15% success on crime/rob, +10% gambling returns
-  - *Stealthy Shoes* — halve fines when caught, steal 10% more
-  - *Invisibility Potion* — +5% success, leave no trace in logs
+- **Shop system** (`!shop` / `!buy` / `!inventory` / `!open`) — buy special items that modify command behavior:
+  - *Donut* (⌬ 5,000) — bribe the cops, halve fines
+  - *Pet Rock* (⌬ 500) — does nothing, collector item
+  - *Lucky Socks* (⌬ 6,000) — +5% gambling win rate
+  - *Fake License* (⌬ 8,000) — -1 min crime/rob cooldown
+  - *Mystery Box* (⌬ 15,000) — random prize up to ⌬ 100k
+  - *Alarm System* (⌬ 25,000) — 30% chance robber pays double
+  - *Extra Luck* (⌬ 30,000) — +15% success on crime/rob, +10% earnings
+  - *Stealthy Shoes* (⌬ 45,000) — +15% steal, delayed victim notification
+  - *Invisibility Potion* (⌬ 60,000) — +5% success, no trace in logs
 - **Transaction history** (`!history`) — track earnings, losses, transfers, purchases
 - **Moderation** (ban, kick, timeout, warn, purge, slowmode, lock, lockdown, nick, move)
 - **Fun commands** (8ball, ship, roast, impostor, dice, password generator, etc.)

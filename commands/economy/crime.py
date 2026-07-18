@@ -26,7 +26,7 @@ class Crime(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.hybrid_command(name="crime", description="commit a crime for cores", help="Commit a random crime to earn 200-900 cores. 40% chance of getting caught — pay a fine of 100-600 cores. 10min cooldown. Extra Luck (+15% success), Stealthy Shoes (halve fines), Invisibility Potion (+5% success, no log).")
+    @commands.hybrid_command(name="crime", description="commit a crime for cores", help="Commit a random crime to earn 200-900 cores. 40% chance of getting caught — pay a fine of 100-600 cores. 10min cooldown. Items: Extra Luck (+15%, +10% earnings), Donut (halve fines), Fake License (-1min cd), Invisibility Potion (+5%, no log).")
     async def crime(self, ctx):
         data = load_bank()
         data = open_account(ctx.author.id, data)
@@ -34,7 +34,9 @@ class Crime(commands.Cog):
 
         data = await debt_prompt(ctx, self.bot, data, ctx.author.id)
 
-        remaining = get_cooldown(ctx.author.id, data, "last_crime", CRIME_COOLDOWN)
+        has_license = user_has_item(ctx.author.id, "fake_license")
+        cd = CRIME_COOLDOWN - 60 if has_license else CRIME_COOLDOWN
+        remaining = get_cooldown(ctx.author.id, data, "last_crime", cd)
         if remaining:
             mins = round(remaining / 60)
             return await ctx.send(embed=discord.Embed(
@@ -44,7 +46,7 @@ class Crime(commands.Cog):
         set_cooldown(ctx.author.id, data, "last_crime")
 
         has_luck = user_has_item(ctx.author.id, "extra_luck")
-        has_stealth = user_has_item(ctx.author.id, "stealthy_shoes")
+        has_donut = user_has_item(ctx.author.id, "donut")
         has_invis = user_has_item(ctx.author.id, "invisibility_potion")
 
         success_chance = 0.6
@@ -66,7 +68,7 @@ class Crime(commands.Cog):
             embed = discord.Embed(description=desc, color=0x57f287)
         else:
             fine = random.randint(100, 600)
-            if has_stealth:
+            if has_donut:
                 fine = max(50, fine // 2)
             apply_loss(user_id, data, fine)
             save_bank(data)
