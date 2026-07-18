@@ -69,7 +69,7 @@ class Work(commands.Cog):
             streak_bonus = int(earnings * (STREAK_MULTIPLIER - 1))
             earnings += streak_bonus
 
-        debt_paid, to_wallet = apply_earnings(user_id, data, earnings)
+        debt_paid, _ = apply_earnings(user_id, data, earnings)
         set_cooldown(ctx.author.id, data, "last_work")
         save_bank(data)
 

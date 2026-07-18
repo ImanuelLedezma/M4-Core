@@ -1,6 +1,7 @@
 import os
 import time
 import asyncio
+import threading
 import discord
 from collections import defaultdict
 from typing import Dict, Any, Tuple
@@ -10,6 +11,7 @@ from commands.economy.history import add_tx_sync
 
 BANK_FILE = "bank.msgpack"
 AccountData = Dict[str, Any]
+_bank_lock = threading.Lock()
 
 RATE_LIMIT_COMMANDS = 5
 RATE_LIMIT_WINDOW = 10
@@ -31,28 +33,31 @@ def _bank_path() -> str:
 
 def load_bank() -> AccountData:
     global _cache_mtime
-    try:
-        mtime = os.path.getmtime(_bank_path())
-    except OSError:
-        mtime = 0
-    if not _cache or mtime > _cache_mtime:
-        _cache.clear()
-        _cache.update(load(BANK_FILE))
-        _cache_mtime = mtime
-    return _cache
+    with _bank_lock:
+        try:
+            mtime = os.path.getmtime(_bank_path())
+        except OSError:
+            mtime = 0
+        if not _cache or mtime > _cache_mtime:
+            _cache.clear()
+            _cache.update(load(BANK_FILE))
+            _cache_mtime = mtime
+        return _cache
 
 def save_bank(data: AccountData) -> None:
     global _cache_mtime
-    if data is not _cache:
-        _cache.clear()
-        _cache.update(data)
-    save(BANK_FILE, data)
-    try:
-        _cache_mtime = os.path.getmtime(_bank_path())
-    except OSError:
-        _cache_mtime = 0
+    with _bank_lock:
+        if data is not _cache:
+            _cache.clear()
+            _cache.update(data)
+        save(BANK_FILE, data)
+        try:
+            _cache_mtime = os.path.getmtime(_bank_path())
+        except OSError:
+            _cache_mtime = 0
     
 def open_account(user_id: int, data: AccountData) -> AccountData:
+    user_id = int(user_id)
     uid = str(user_id)
     if uid not in data:
         data[uid] = {
@@ -81,7 +86,7 @@ def open_account(user_id: int, data: AccountData) -> AccountData:
 
 def get_cooldown(user_id: int, data: AccountData, key: str, seconds: int) -> int:
     current_time = time.time()
-    last_time = data[str(user_id)].get(key, 0)
+    last_time = data[str(int(user_id))].get(key, 0)
     remaining = (last_time + seconds) - current_time
     return max(0, round(remaining))
 
@@ -89,7 +94,7 @@ def set_cooldown(user_id: int, data: AccountData, key: str) -> None:
     data[str(user_id)][key] = time.time()
 
 def apply_loss(user_id: int, data: AccountData, amount: int, note: str = "") -> None:
-    uid = str(user_id)
+    uid = str(int(user_id))
     wallet = data[uid]["wallet"]
     if amount <= wallet:
         data[uid]["wallet"] -= amount
@@ -99,7 +104,7 @@ def apply_loss(user_id: int, data: AccountData, amount: int, note: str = "") -> 
     add_tx_sync(user_id, "loss", -amount, note)
 
 def apply_earnings(user_id: int, data: AccountData, amount: int, note: str = "") -> Tuple[int, int]:
-    uid = str(user_id)
+    uid = str(int(user_id))
     debt = data[uid]["debt"]
     if debt > 0:
         if amount >= debt:

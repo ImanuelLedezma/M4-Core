@@ -52,7 +52,7 @@ class Beg(commands.Cog):
 
         scene, min_coins, max_coins = random.choice(SUCCESS_SCENES)
         earnings = random.randint(min_coins, max_coins)
-        debt_paid, to_wallet = apply_earnings(user_id, data, earnings)
+        debt_paid, _ = apply_earnings(user_id, data, earnings)
         save_bank(data)
 
         desc = f"◈ {scene} **⌬ {earnings}** cores"

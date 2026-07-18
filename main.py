@@ -188,23 +188,21 @@ class M4Core(commands.Bot):
 
 bot = M4Core()
 
-async def shutdown(signal_name: str):
-    log.info("received %s — shutting down", signal_name)
-    await bot.close()
-
-def handle_signal(signum, frame):
-    sig_name = signal.Signals(signum).name
-    asyncio.create_task(shutdown(sig_name))
-
 if __name__ == "__main__":
     if sys.platform != "win32":
+        loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
-            signal.signal(sig, handle_signal)
+            try:
+                loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(
+                    bot.close()
+                ))
+            except NotImplementedError:
+                signal.signal(sig, lambda s, f: asyncio.create_task(bot.close()))
 
     try:
         bot.run(TOKEN)
     except KeyboardInterrupt:
-        asyncio.run(shutdown("SIGINT"))
+        log.info("keyboard interrupt — shutting down")
     except Exception as e:
         log.critical("fatal error: %s", e)
         raise

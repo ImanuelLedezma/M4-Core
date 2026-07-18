@@ -44,7 +44,7 @@ class Daily(commands.Cog):
         streak_earnings = streak * STREAK_BONUS
         earnings = base + streak_earnings
 
-        debt_paid, to_wallet = apply_earnings(uid, data, earnings)
+        debt_paid, _ = apply_earnings(uid, data, earnings)
         data[uid]["daily_streak"] = streak
         set_cooldown(ctx.author.id, data, "last_daily")
         save_bank(data)

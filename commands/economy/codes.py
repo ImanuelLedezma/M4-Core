@@ -67,7 +67,7 @@ class Codes(commands.Cog):
         data = load_bank()
         data = open_account(ctx.author.id, data)
         amount = entry["amount"]
-        debt_paid, to_wallet = apply_earnings(uid, data, amount)
+        debt_paid, _ = apply_earnings(uid, data, amount)
         save_bank(data)
 
         desc = f"√ redeemed `{code}` — **⌬ {amount:,}** cores added"

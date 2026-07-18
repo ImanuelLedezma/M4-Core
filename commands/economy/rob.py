@@ -66,7 +66,7 @@ class Rob(commands.Cog):
                 max_steal = min(1150, int(max_steal * 1.15))
             stolen = random.randint(50, max(50, max_steal))
             data[victim_id]["wallet"] -= stolen
-            debt_paid, to_wallet = apply_earnings(robber_id, data, stolen)
+            debt_paid, _ = apply_earnings(robber_id, data, stolen)
             save_bank(data)
             add_tx(ctx.author.id, "earn", stolen, f"robbed {member.name}")
             add_tx(member.id, "loss", -stolen, f"robbed by {ctx.author.name}")

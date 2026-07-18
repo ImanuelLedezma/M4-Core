@@ -51,7 +51,7 @@ class Coinflip(commands.Cog):
         }
 
         if won:
-            debt_paid, to_wallet = apply_earnings(uid, data, amount)
+            debt_paid, _ = apply_earnings(uid, data, amount)
             desc = f"{coin} **{result}** — you won **⌬ {amount:,}** cores"
             if debt_paid:
                 desc += f"\n⌬ {debt_paid:,} went toward your debt"

@@ -59,7 +59,7 @@ class Crime(commands.Cog):
             earnings = random.randint(200, 900)
             if has_luck:
                 earnings = int(earnings * 1.1)
-            debt_paid, to_wallet = apply_earnings(user_id, data, earnings)
+            debt_paid, _ = apply_earnings(user_id, data, earnings)
             save_bank(data)
             act = random.choice(CRIMES)
             desc = f"╼ **crime pays** ╾\nyou {act} and earned **⌬ {earnings:,}** cores"
