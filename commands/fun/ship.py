@@ -45,7 +45,7 @@ class Ship(commands.Cog):
 
         embed = discord.Embed(
             title=f"{emoji} ship · {sname}",
-            color=discord.Color.magenta()
+            color=0x5865f2
         )
         embed.description = f"{member1.mention} × {member2.mention}"
         embed.add_field(name="compatibility", value=f"`{bar}` **{score}%**", inline=False)

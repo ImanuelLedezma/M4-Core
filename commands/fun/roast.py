@@ -52,7 +52,7 @@ class Roast(commands.Cog):
         embed = discord.Embed(
             title=f"🔥 roasting {target.display_name}",
             description=f"*{random.choice(pool)}*",
-            color=discord.Color.orange()
+            color=0xf1c40f
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.set_footer(text=f"requested by {ctx.author.display_name}")

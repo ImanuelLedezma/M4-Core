@@ -28,7 +28,7 @@ class Welcome(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ welcome channel set",
             description=f"welcome messages will now be sent to {channel.mention}",
-            color=discord.Color.green()
+            color=0x57f287
         ))
 
     @commands.hybrid_command(name="setautorole", description="set a role to auto-assign to new members", help="Set a role that will be automatically assigned to all new members when they join. Requires Manage Guild permission.")
@@ -69,7 +69,7 @@ class Welcome(commands.Cog):
         embed = discord.Embed(
             title="welcome!",
             description=msg,
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         embed.set_footer(text=f"member #{member.guild.member_count}")

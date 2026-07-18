@@ -23,7 +23,7 @@ class ReactionRoles(commands.Cog):
             msg = await channel.fetch_message(mid)
         except (ValueError, discord.NotFound):
             return await ctx.send(embed=discord.Embed(
-                description="✖ message not found. make sure the id is correct and i can see the channel.",
+                description="⊘ message not found. make sure the id is correct and i can see the channel.",
                 color=0xff4500
             ))
         except discord.Forbidden:
@@ -35,7 +35,7 @@ class ReactionRoles(commands.Cog):
             await msg.add_reaction(emoji)
         except (discord.Forbidden, discord.NotFound, discord.InvalidArgument):
             return await ctx.send(embed=discord.Embed(
-                description=f"✖ invalid emoji `{emoji}` or i can't react there.",
+                description=f"⊘ invalid emoji `{emoji}` or i can't react there.",
                 color=0xff4500
             ))
 

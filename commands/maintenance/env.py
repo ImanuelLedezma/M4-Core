@@ -77,7 +77,7 @@ class Env(commands.Cog):
         except discord.Forbidden: pass
 
         if str(reaction.emoji) == "❌":
-            return await warn_msg.edit(embed=discord.Embed(description="✖ cancelled.", color=0xff4500))
+            return await warn_msg.edit(embed=discord.Embed(description="⊘ cancelled.", color=0xff4500))
 
         env = read_env()
 
@@ -94,7 +94,7 @@ class Env(commands.Cog):
             val = env.get(name) or os.getenv(name)
             if val is None:
                 await warn_msg.edit(embed=discord.Embed(
-                    description=f"✖ `{name}` not found in `.env`.",
+                    description=f"⊘ `{name}` not found in `.env`.",
                     color=0xff4500
                 ))
             else:
@@ -105,7 +105,7 @@ class Env(commands.Cog):
         elif action == "read_all":
             if not env:
                 await warn_msg.edit(embed=discord.Embed(
-                    description="✖ `.env` is empty or not found.",
+                    description="⊘ `.env` is empty or not found.",
                     color=0xff4500
                 ))
             else:

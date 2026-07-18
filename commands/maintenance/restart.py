@@ -31,12 +31,12 @@ class Restart(commands.Cog):
             return await msg.edit(embed=discord.Embed(description="⊘ cancelled (timeout)", color=0xff4500))
 
         if str(r.emoji) == "❌":
-            return await msg.edit(embed=discord.Embed(description="✖ cancelled.", color=0xff4500))
+            return await msg.edit(embed=discord.Embed(description="⊘ cancelled.", color=0xff4500))
 
         await msg.edit(embed=discord.Embed(
             title="⟳ restarting",
             description=f"restarting bot... initiated by {ctx.author}",
-            color=discord.Color.blue()
+            color=0x5865f2
         ))
 
         await asyncio.create_subprocess_exec(

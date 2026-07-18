@@ -74,16 +74,16 @@ class Calculator(commands.Cog):
             tree = ast.parse(clean, mode="eval")
             result = _safe_eval(tree.body)
 
-            embed = discord.Embed(title="calculator", color=discord.Color.blue())
+            embed = discord.Embed(title="calculator", color=0x5865f2)
             embed.add_field(name="input", value=f"```\n{expression}\n```", inline=False)
             embed.add_field(name="result", value=f"```\n{result}\n```", inline=False)
             await ctx.send(embed=embed)
 
         except (SyntaxError, ValueError, TypeError, OverflowError):
             await ctx.send(embed=discord.Embed(
-                title="✖ invalid expression",
+                title="⊘ invalid expression",
                 description="use numbers and operators only. (e.g. `4*2`, `10/2`, `sqrt(9)`)",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
 async def setup(bot) -> None:

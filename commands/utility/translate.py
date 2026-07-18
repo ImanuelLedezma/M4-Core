@@ -44,12 +44,12 @@ class Translate(commands.Cog):
 
         except exceptions.LanguageNotSupportedException:
             await ctx.send(embed=discord.Embed(
-                description=f"✖ language `{target}` not supported. try `en`, `es`, `fr`, `de`, etc.",
+                description=f"⊘ language `{target}` not supported. try `en`, `es`, `fr`, `de`, etc.",
                 color=0xff4500
             ))
         except Exception as e:
             await ctx.send(embed=discord.Embed(
-                description=f"✖ translation failed: {e}",
+                description=f"⊘ translation failed: {e}",
                 color=0xff4500
             ))
 

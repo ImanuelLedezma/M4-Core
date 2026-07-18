@@ -171,7 +171,7 @@ $pin.addEventListener('keydown', async e=>{
     $login.classList.add('hidden');$app.classList.remove('hidden');
     $cmd.focus(); setPrompt(); boot();
   } else {
-    $lstatus.textContent='✖ wrong PIN';
+    $lstatus.textContent='⊘ wrong PIN';
     $lstatus.style.color='var(--red)';
   }
 });
@@ -255,7 +255,7 @@ async function cmdRestart(){
 async function cmdReload(){
   p('reloading cogs...','c');
   const r=await api('/api/reload',{});
-  (r.results||[]).forEach(l=>p(l,l.startsWith('✖')?'r':'g'));
+  (r.results||[]).forEach(l=>p(l,l.startsWith('⊘')?'r':'g'));
 }
 async function cmdEnv(args){
   const sub=(args[0]||'').toLowerCase();
@@ -297,8 +297,8 @@ async function cmdPull(branch){
   if(r.ok){
     p(r.output||'already up to date.','g');
     p('reloading cogs...','c');
-    (r.reloads||[]).forEach(l=>p(l,l.startsWith('✖')?'r':'g'));
-  } else p('✖ '+(r.error||'pull failed'),'r');
+    (r.reloads||[]).forEach(l=>p(l,l.startsWith('⊘')?'r':'g'));
+  } else p('⊘ '+(r.error||'pull failed'),'r');
 }
 async function cmdCd(path){
   if(!path){cwd='/';setPrompt();return;}
@@ -517,9 +517,9 @@ async def _do_reload(bot) -> list:
                 await bot.reload_extension(path); results.append(f"√ {path}")
             except commands.ExtensionNotLoaded:
                 try:   await bot.load_extension(path); results.append(f"√ {path} (new)")
-                except Exception as e: results.append(f"✖ {path}: {e}")
+                except Exception as e: results.append(f"⊘ {path}: {e}")
             except Exception as e:
-                results.append(f"✖ {path}: {e}")
+                results.append(f"⊘ {path}: {e}")
     return results
 
 async def route_git_pull(request: web.Request):

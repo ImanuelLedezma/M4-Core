@@ -49,7 +49,7 @@ class Say(commands.Cog):
             await ctx.message.add_reaction("✅")
         except (ValueError, discord.NotFound, discord.Forbidden) as e:
             await ctx.send(embed=discord.Embed(
-                description=f"✖ {e}", color=0xff4500
+                description=f"⊘ {e}", color=0xff4500
             ))
 
 async def setup(bot) -> None:

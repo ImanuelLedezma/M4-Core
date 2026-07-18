@@ -34,15 +34,15 @@ class Slowmode(commands.Cog):
                 seconds = int(value)
             except ValueError:
                 return await ctx.send(embed=discord.Embed(
-                    description="✖ use a number (0-21600) or a preset: `off`, `slow`, `medium`, `fast`, `very slow`, `extreme`",
+                    description="⊘ use a number (0-21600) or a preset: `off`, `slow`, `medium`, `fast`, `very slow`, `extreme`",
                     color=0xff4500
                 ))
 
         if seconds < 0 or seconds > 21600:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid value",
+                title="⊘ invalid value",
                 description="must be between `0` and `21600` (6 hours).",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
         await ctx.channel.edit(slowmode_delay=seconds)

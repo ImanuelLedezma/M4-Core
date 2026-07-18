@@ -13,7 +13,7 @@ class HallOfFame(commands.Cog):
     async def hof(self, ctx):
         if not ctx.message.reference:
             return await ctx.send(embed=discord.Embed(
-                description="✖ you must reply to a message to add it to the hall of fame",
+                description="⊘ you must reply to a message to add it to the hall of fame",
                 color=0xff4500
             ), delete_after=5)
 
@@ -21,19 +21,19 @@ class HallOfFame(commands.Cog):
             ref_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         except discord.NotFound:
             return await ctx.send(embed=discord.Embed(
-                description="✖ couldn't find the referenced message!", color=0xff4500
+                description="⊘ couldn't find the referenced message!", color=0xff4500
             ), delete_after=5)
 
         if hof_has(ref_msg.id):
             return await ctx.send(embed=discord.Embed(
-                description="✖ that message is already in the hall of fame.",
+                description="⊘ that message is already in the hall of fame.",
                 color=0xff4500
             ), delete_after=5)
 
         hof_channel = ctx.guild.get_channel(self.channel_id)
         if not hof_channel:
             return await ctx.send(embed=discord.Embed(
-                description="✖ hall of fame channel not found!", color=0xff4500
+                description="⊘ hall of fame channel not found!", color=0xff4500
             ), delete_after=5)
 
         hof_add(ref_msg.id)

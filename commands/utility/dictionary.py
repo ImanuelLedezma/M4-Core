@@ -52,11 +52,11 @@ class Dictionary(commands.Cog):
         results = await self._define(term)
         if results is None:
             return await ctx.send(embed=discord.Embed(
-                description="✖ couldn't reach urban dictionary.", color=0xff4500
+                description="⊘ couldn't reach urban dictionary.", color=0xff4500
             ))
         if not results:
             return await ctx.send(embed=discord.Embed(
-                description=f"✖ no results for **{term}**.", color=0xff4500
+                description=f"⊘ no results for **{term}**.", color=0xff4500
             ))
 
         top = results[0]
@@ -82,16 +82,16 @@ class Dictionary(commands.Cog):
             async with session.get("https://api.urbandictionary.com/v0/random") as resp:
                 if resp.status != 200:
                     return await ctx.send(embed=discord.Embed(
-                        description="✖ couldn't reach urban dictionary.", color=0xff4500
+                        description="⊘ couldn't reach urban dictionary.", color=0xff4500
                     ))
                 data = await resp.json()
         except (aiohttp.ClientError, ValueError, TypeError):
             return await ctx.send(embed=discord.Embed(
-                description="✖ couldn't reach urban dictionary.", color=0xff4500
+                description="⊘ couldn't reach urban dictionary.", color=0xff4500
             ))
         results = data.get("list", [])
         if not results:
-            return await ctx.send(embed=discord.Embed(description="✖ no results found.", color=0xff4500))
+            return await ctx.send(embed=discord.Embed(description="⊘ no results found.", color=0xff4500))
 
         entry = results[0]
         definition = entry["definition"].replace("[", "").replace("]", "")

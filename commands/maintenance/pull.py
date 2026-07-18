@@ -24,9 +24,9 @@ class Pull(commands.Cog):
                             await self.bot.load_extension(module_path)
                             results.append(f"√ `{module_path}` (new)")
                         except Exception as e:
-                            results.append(f"✖ `{module_path}`: {e}")
+                            results.append(f"⊘ `{module_path}`: {e}")
                     except Exception as e:
-                        results.append(f"✖ `{module_path}`: {e}")
+                        results.append(f"⊘ `{module_path}`: {e}")
         return results
 
     @commands.hybrid_command(name="pull", description="git pull and reload all cogs", help="Git pull from GitHub and reload all cogs. Usage: !pull (from main), !pull canary. Admin only.")
@@ -35,11 +35,11 @@ class Pull(commands.Cog):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))
         branch = branch.lower()
         if branch not in ["canary", "main"]:
-            return await ctx.send("✖ use `!pull canary` or `!pull main`.")
+            return await ctx.send("⊘ use `!pull canary` or `!pull main`.")
         status_msg = await ctx.send(embed=discord.Embed(
             title="⟳ pulling",
             description=f"pulling and updating bot internals from **{branch}**...",
-            color=discord.Color.blue()
+            color=0x5865f2
         ))
         try:
             process = await asyncio.create_subprocess_shell(
@@ -62,7 +62,7 @@ class Pull(commands.Cog):
             embed = discord.Embed(
                 title="√ pulled!",
                 description=f"pulled and updated bot internals from `{branch}`.",
-                color=discord.Color.green()
+                color=0x57f287
             )
             embed.add_field(name="git output", value=f"```\n{git_log}\n```", inline=False)
             embed.add_field(name="bot logs", value=log_chunk or "no cogs found.", inline=False)
@@ -72,9 +72,9 @@ class Pull(commands.Cog):
             if len(err) > 1000:
                 err = err[:1000] + "..."
             embed = discord.Embed(
-                title="✖ pull failed",
+                title="⊘ pull failed",
                 description=f"```\n{err}\n```",
-                color=discord.Color.red()
+                color=0xff4500
             )
             embed.add_field(
                 name="common causes",

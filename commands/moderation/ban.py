@@ -33,13 +33,13 @@ class Ban(commands.Cog):
     async def ban(self, ctx, member: discord.Member, *, reason: str = "no reason provided"):
         if member == ctx.author:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid target", description="you can't ban yourself.", color=discord.Color.red()
+                title="⊘ invalid target", description="you can't ban yourself.", color=0xff4500
             ))
         if member.top_role >= ctx.author.top_role:
             return await ctx.send(embed=discord.Embed(
-                title="✖ insufficient hierarchy",
+                title="⊘ insufficient hierarchy",
                 description="you can't ban someone with an equal or higher role.",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         if not await self._confirm(ctx, member, "ban"):
             return
@@ -48,7 +48,7 @@ class Ban(commands.Cog):
             await member.send(embed=discord.Embed(
                 title=f"you've been banned from {ctx.guild.name}",
                 description=f"**reason:** {reason}\n**by:** {ctx.author.name}",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         except discord.Forbidden:
             pass
@@ -57,7 +57,7 @@ class Ban(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ banned",
             description=f"banned {member.mention} · **{reason}**",
-            color=discord.Color.green()
+            color=0x57f287
         ))
 
     @commands.hybrid_command(name="unban", description="unban a user by id or name", help="Unban a user by their ID number or by searching their username. Requires Ban Members permission.")
@@ -75,9 +75,9 @@ class Ban(commands.Cog):
                     break
             if not match:
                 return await ctx.send(embed=discord.Embed(
-                    title="✖ not found",
+                    title="⊘ not found",
                     description=f"no banned user matching `{identifier}`.",
-                    color=discord.Color.red()
+                    color=0xff4500
                 ))
             user = match
 
@@ -85,7 +85,7 @@ class Ban(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ unbanned",
             description=f"unbanned `{user.name}`",
-            color=discord.Color.green()
+            color=0x57f287
         ))
 
     @commands.hybrid_command(name="bans", description="list banned users", help="Shows all banned users with their user ID and ban reason. Requires Ban Members permission.")

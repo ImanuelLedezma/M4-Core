@@ -90,7 +90,7 @@ class Hack(commands.Cog):
             ("√ hack complete!", True),
         ]
 
-        embed = discord.Embed(title="⟳ hacking...", description=steps[0][0], color=discord.Color.red())
+        embed = discord.Embed(title="⟳ hacking...", description=steps[0][0], color=0xff4500)
         msg = await ctx.send(embed=embed)
 
         for desc, _ in steps[1:]:
@@ -102,7 +102,7 @@ class Hack(commands.Cog):
 
         result_embed = discord.Embed(
             title=f"√ hacked {member.display_name}",
-            color=discord.Color.red()
+            color=0xff4500
         )
         result_embed.set_thumbnail(url=member.display_avatar.url)
         result_embed.add_field(name="ip address", value=f"`{ip}`", inline=True)
@@ -120,9 +120,9 @@ class Hack(commands.Cog):
         error.handled = True
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(embed=discord.Embed(
-                title="✖ missing target",
+                title="⊘ missing target",
                 description="usage: `!hack @member`",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
 async def setup(bot) -> None:

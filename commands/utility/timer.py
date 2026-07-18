@@ -35,17 +35,17 @@ class Timer(commands.Cog):
                     label = label_or_none
             except ValueError:
                 return await ctx.send(embed=discord.Embed(
-                    description="✖ invalid format. use `!timer 30`, `!timer 5m`, `!timer 1h pizza`",
+                    description="⊘ invalid format. use `!timer 30`, `!timer 5m`, `!timer 1h pizza`",
                     color=0xff4500
                 ))
 
         if duration_secs < 1:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid duration", description="minimum is `1` second.", color=discord.Color.red()
+                title="⊘ invalid duration", description="minimum is `1` second.", color=0xff4500
             ))
         if duration_secs > 86400:
             return await ctx.send(embed=discord.Embed(
-                title="✖ too long", description="max duration is `86400` seconds (24h).", color=discord.Color.red()
+                title="⊘ too long", description="max duration is `86400` seconds (24h).", color=0xff4500
             ))
 
         # cancel existing timer
@@ -55,7 +55,7 @@ class Timer(commands.Cog):
         embed = discord.Embed(
             title=f"⟳ {label}",
             description=f"time remaining: {self._fmt(duration_secs)}",
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.set_footer(text=f"started by {ctx.author.display_name}")
         msg = await ctx.send(embed=embed)
@@ -81,7 +81,7 @@ class Timer(commands.Cog):
                 done_embed = discord.Embed(
                     title=f"√ {label}",
                     description=f"{ctx.author.mention} your timer is up!",
-                    color=discord.Color.green()
+                    color=0x57f287
                 )
                 done_embed.set_footer(text=f"started by {ctx.author.display_name}")
                 await msg.edit(embed=done_embed)
@@ -91,7 +91,7 @@ class Timer(commands.Cog):
                     await ctx.author.send(embed=discord.Embed(
                         title=f"⏱ timer done · {label}",
                         description=f"your timer in **{ctx.guild.name}** · #{ctx.channel.name}",
-                        color=discord.Color.green()
+                        color=0x57f287
                     ))
                 except discord.Forbidden:
                     pass

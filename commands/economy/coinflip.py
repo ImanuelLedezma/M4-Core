@@ -13,7 +13,7 @@ class Coinflip(commands.Cog):
         side = side.lower()
         if side not in ("heads", "tails", "h", "t"):
             return await ctx.send(embed=discord.Embed(
-                description="✖ choose `heads` or `tails`",
+                description="⊘ choose `heads` or `tails`",
                 color=0xff4500
             ))
 

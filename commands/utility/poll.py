@@ -28,7 +28,7 @@ class Poll(commands.Cog):
 
         if len(options) > 8:
             return await ctx.send(embed=discord.Embed(
-                description="✖ max 8 options allowed.",
+                description="⊘ max 8 options allowed.",
                 color=0xff4500
             ))
 

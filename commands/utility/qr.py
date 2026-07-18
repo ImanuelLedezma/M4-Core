@@ -19,7 +19,7 @@ class QR(commands.Cog):
             if ctx.message.attachments:
                 return await self._read_qr(ctx)
             return await ctx.send(embed=discord.Embed(
-                description="✖ usage: `!qr <text>`, `!qr read` with an image, or attach an image to decode",
+                description="⊘ usage: `!qr <text>`, `!qr read` with an image, or attach an image to decode",
                 color=0xff4500
             ))
 
@@ -36,14 +36,14 @@ class QR(commands.Cog):
     async def _read_qr(self, ctx):
         if not ctx.message.attachments:
             return await ctx.send(embed=discord.Embed(
-                description="✖ attach an image containing a qr code.",
+                description="⊘ attach an image containing a qr code.",
                 color=0xff4500
             ))
 
         attachment = ctx.message.attachments[0]
         if not attachment.content_type or not attachment.content_type.startswith("image"):
             return await ctx.send(embed=discord.Embed(
-                description="✖ the attachment must be an image.",
+                description="⊘ the attachment must be an image.",
                 color=0xff4500
             ))
 
@@ -52,7 +52,7 @@ class QR(commands.Cog):
             from PIL import Image as PILImage
         except ImportError:
             return await ctx.send(embed=discord.Embed(
-                description="✖ qr reading requires `pyzbar` and `pyzbar[windows]` (not installed).",
+                description="⊘ qr reading requires `pyzbar` and `pyzbar[windows]` (not installed).",
                 color=0xff4500
             ))
 
@@ -61,14 +61,14 @@ class QR(commands.Cog):
             img = PILImage.open(io.BytesIO(img_bytes))
         except Exception:
             return await ctx.send(embed=discord.Embed(
-                description="✖ could not decode the image.",
+                description="⊘ could not decode the image.",
                 color=0xff4500
             ))
 
         decoded = decode(img)
         if not decoded:
             return await ctx.send(embed=discord.Embed(
-                description="✖ no qr code detected in the image.",
+                description="⊘ no qr code detected in the image.",
                 color=0xff4500
             ))
 

@@ -74,7 +74,7 @@ class DeathDate(commands.Cog):
 
         embed = discord.Embed(
             title=f"☠ death certificate · {target.display_name}",
-            color=discord.Color.dark_gray()
+            color=0x2b2d31
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="date of passing", value=f"`{date_str}`", inline=True)

@@ -14,14 +14,14 @@ class Remind(commands.Cog):
         parsed = parse_duration_with_label(duration)
         if not parsed:
             return await ctx.send(embed=discord.Embed(
-                description="✖ invalid duration. use `10s`, `5m`, `2h`, `1d`.",
+                description="⊘ invalid duration. use `10s`, `5m`, `2h`, `1d`.",
                 color=0xff4500
             ))
 
         seconds, label = parsed
         if seconds > 86400 * 7:
             return await ctx.send(embed=discord.Embed(
-                description="✖ max reminder duration is 7 days.",
+                description="⊘ max reminder duration is 7 days.",
                 color=0xff4500
             ))
 

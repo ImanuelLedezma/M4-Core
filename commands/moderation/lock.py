@@ -29,7 +29,7 @@ class Lock(commands.Cog):
 
         await ctx.channel.edit(overwrites=overwrites)
         await ctx.send(embed=discord.Embed(
-            description="🔒 channel locked.",
+            description="√ channel locked.",
             color=0xff4500
         ))
 
@@ -50,7 +50,7 @@ class Lock(commands.Cog):
 
         await ctx.channel.edit(overwrites=overwrites)
         await ctx.send(embed=discord.Embed(
-            description="🔓 channel unlocked.",
+            description="√ channel unlocked.",
             color=0x57f287
         ))
 

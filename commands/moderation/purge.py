@@ -18,9 +18,9 @@ class Purge(commands.Cog):
     async def purge(self, ctx, amount: int, member: discord.Member = None):
         if amount < 1:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid amount",
+                title="⊘ invalid amount",
                 description="specify a number greater than 0.",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
         amount = min(amount, 1000)
@@ -60,7 +60,7 @@ class Purge(commands.Cog):
             await confirm_msg.edit(embed=discord.Embed(
                 title="√ purged",
                 description=f"cleaned `{len(retrieved)}` messages.",
-                color=discord.Color.green()
+                color=0x57f287
             ))
             await asyncio.sleep(3)
             await confirm_msg.delete()
@@ -73,7 +73,7 @@ class Purge(commands.Cog):
         except discord.HTTPException as e:
             _log.error("purge error: %s", e)
             await ctx.send(embed=discord.Embed(
-                description=f"✖ purge failed: {e}",
+                description=f"⊘ purge failed: {e}",
                 color=0xff4500
             ), delete_after=5)
 

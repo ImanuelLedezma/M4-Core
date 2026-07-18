@@ -34,23 +34,23 @@ class Timeout(commands.Cog):
     async def timeout(self, ctx, member: discord.Member, duration: str, *, reason: str = "no reason provided"):
         if member == ctx.author:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid target", description="you can't timeout yourself.", color=discord.Color.red()
+                title="⊘ invalid target", description="you can't timeout yourself.", color=0xff4500
             ))
         if member.top_role >= ctx.author.top_role:
             return await ctx.send(embed=discord.Embed(
-                title="✖ insufficient hierarchy", description="you can't timeout someone with an equal or higher role.", color=discord.Color.red()
+                title="⊘ insufficient hierarchy", description="you can't timeout someone with an equal or higher role.", color=0xff4500
             ))
 
         delta = parse_duration(duration)
         if not delta:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid duration",
+                title="⊘ invalid duration",
                 description="use format: `10s`, `5m`, `2h`, `1d`",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         if delta.total_seconds() > 60 * 60 * 24 * 28:
             return await ctx.send(embed=discord.Embed(
-                title="✖ too long", description="max timeout is 28 days.", color=discord.Color.red()
+                title="⊘ too long", description="max timeout is 28 days.", color=0xff4500
             ))
         if not await self._confirm(ctx, member, f"timeout for {duration}"):
             return
@@ -61,7 +61,7 @@ class Timeout(commands.Cog):
             await member.send(embed=discord.Embed(
                 title=f"you've been timed out in {ctx.guild.name}",
                 description=f"**duration:** {duration}\n**reason:** {reason}\n**by:** {ctx.author.name}",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         except discord.Forbidden:
             pass
@@ -69,7 +69,7 @@ class Timeout(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ timed out",
             description=f"timed out {member.mention} for **{duration}** · {reason}",
-            color=discord.Color.green()
+            color=0x57f287
         ))
 
     @commands.hybrid_command(name="untimeout", aliases=["unmute"], description="remove a timeout from a member", help="Remove an active timeout from a member. Requires Moderate Members permission.")
@@ -81,7 +81,7 @@ class Timeout(commands.Cog):
             ))
         await member.timeout(None)
         await ctx.send(embed=discord.Embed(
-            description=f"√ removed timeout from {member.mention}.", color=discord.Color.green()
+            description=f"√ removed timeout from {member.mention}.", color=0x57f287
         ))
 
 async def setup(bot) -> None:

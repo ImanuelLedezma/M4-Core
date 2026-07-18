@@ -28,7 +28,7 @@ class About(commands.Cog):
         embed = discord.Embed(
             title="m4-core",
             description="a modular discord bot · economy, moderation, fun & more",
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
         embed.add_field(name="library", value="`discord.py`", inline=True)

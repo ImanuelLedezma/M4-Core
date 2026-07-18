@@ -27,7 +27,7 @@ class RoleInfo(commands.Cog):
 
         embed = discord.Embed(
             title=role.name,
-            color=role.color if role.color.value else discord.Color.blue()
+            color=role.color if role.color.value else 0x5865f2
         )
         embed.add_field(name="id", value=f"`{role.id}`", inline=True)
         embed.add_field(name="members", value=f"`{len(role.members)}`", inline=True)

@@ -23,7 +23,7 @@ class Avatar(commands.Cog):
 
         embed = discord.Embed(
             title=f"{member.name}'s avatar",
-            color=member.color if member.color.value else discord.Color.blue()
+            color=member.color if member.color.value else 0x5865f2
         )
         embed.set_image(url=url)
         embed.set_footer(text=f"{fmt.upper()} · {url.split('?')[0].rsplit('/', 1)[-1]}")

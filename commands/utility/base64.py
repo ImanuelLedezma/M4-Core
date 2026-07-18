@@ -31,7 +31,7 @@ class Base64(commands.Cog):
 
         if action not in ("encode", "decode"):
             return await ctx.send(embed=discord.Embed(
-                description="✖ usage: `!b64 encode <text>`, `!b64 decode base32 <text>`, `!b64 decode hex <text>`",
+                description="⊘ usage: `!b64 encode <text>`, `!b64 decode base32 <text>`, `!b64 decode hex <text>`",
                 color=0xff4500
             ))
 
@@ -40,7 +40,7 @@ class Base64(commands.Cog):
                 text = encoding
             else:
                 return await ctx.send(embed=discord.Embed(
-                    description="✖ missing text to process.",
+                    description="⊘ missing text to process.",
                     color=0xff4500
                 ))
 
@@ -56,7 +56,7 @@ class Base64(commands.Cog):
                 label = f"◈ decoded ({fmt})"
         except (binascii.Error, ValueError, Exception):
             return await ctx.send(embed=discord.Embed(
-                description=f"✖ invalid input for {fmt} decoding.",
+                description=f"⊘ invalid input for {fmt} decoding.",
                 color=0xff4500
             ))
 

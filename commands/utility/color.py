@@ -31,7 +31,7 @@ class Color(commands.Cog):
             hex_code = query.lstrip("#")
             if len(hex_code) not in (3, 6) or not all(c in "0123456789abcdef" for c in hex_code):
                 return await ctx.send(embed=discord.Embed(
-                    description="✖ provide a valid hex code (e.g. `!color #ff4500`) or color name (e.g. `!color red`)",
+                    description="⊘ provide a valid hex code (e.g. `!color #ff4500`) or color name (e.g. `!color red`)",
                     color=0xff4500
                 ))
 

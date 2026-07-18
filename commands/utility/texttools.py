@@ -54,13 +54,13 @@ class TextTools(commands.Cog):
         available_fonts = ["standard", "big", "block", "bubble", "digital", "slant", "small", "script"]
         if font not in available_fonts:
             return await ctx.send(embed=discord.Embed(
-                description=f"✖ font must be one of: `{'`, `'.join(available_fonts)}`",
+                description=f"⊘ font must be one of: `{'`, `'.join(available_fonts)}`",
                 color=0xff4500
             ))
 
         if len(text) > 20:
             return await ctx.send(embed=discord.Embed(
-                description="✖ max 20 characters for ascii art.",
+                description="⊘ max 20 characters for ascii art.",
                 color=0xff4500
             ))
 

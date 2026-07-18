@@ -14,11 +14,11 @@ class Generators(commands.Cog):
     async def password(self, ctx, length: int = 16):
         if length < 8:
             return await ctx.send(embed=discord.Embed(
-                title="✖ too short", description="minimum length is `8`.", color=discord.Color.red()
+                title="⊘ too short", description="minimum length is `8`.", color=0xff4500
             ))
         if length > 64:
             return await ctx.send(embed=discord.Embed(
-                title="✖ too long", description="maximum length is `64`.", color=discord.Color.red()
+                title="⊘ too long", description="maximum length is `64`.", color=0xff4500
             ))
 
         chars = string.ascii_letters + string.digits + "!@#$%^&*"
@@ -28,16 +28,16 @@ class Generators(commands.Cog):
             await ctx.author.send(embed=discord.Embed(
                 title="√ generated password",
                 description=f"```\n{pw}\n```",
-                color=discord.Color.green()
+                color=0x57f287
             ).set_footer(text="sent via dms"))
             await ctx.send(embed=discord.Embed(
-                title="√ password sent", description="check your dms", color=discord.Color.green()
+                title="√ password sent", description="check your dms", color=0x57f287
             ))
         except discord.Forbidden:
             await ctx.send(embed=discord.Embed(
-                title="✖ dms closed",
+                title="⊘ dms closed",
                 description="i can't dm you, open your dms and try again",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
     @commands.hybrid_command(name="dice", aliases=["roll"], description="roll dice", help="Roll dice. Formats: !roll 6 (single die), !roll 2d6 (two six-sided), !roll 3d20 (three twenty-sided). Max 20 dice, max 1000 sides.")
@@ -52,14 +52,14 @@ class Generators(commands.Cog):
             sides = min(sides, 1000)
             if count < 1 or sides < 2:
                 return await ctx.send(embed=discord.Embed(
-                    title="✖ invalid dice", description="use format `2d6` or `d20`.", color=discord.Color.red()
+                    title="⊘ invalid dice", description="use format `2d6` or `d20`.", color=0xff4500
                 ))
             results = [random.randint(1, sides) for _ in range(count)]
             total = sum(results)
             desc = f"rolled `{' + '.join(str(r) for r in results)}`"
             if count > 1:
                 desc += f"\n**total: {total}**"
-            embed = discord.Embed(title=f"⚄ {count}d{sides}", description=desc, color=discord.Color.blue())
+            embed = discord.Embed(title=f"⚄ {count}d{sides}", description=desc, color=0x5865f2)
             return await ctx.send(embed=embed)
 
         sides_match = re.fullmatch(r"(\d+)", formula)
@@ -67,21 +67,21 @@ class Generators(commands.Cog):
             sides = int(sides_match.group(1))
             if sides < 2 or sides > 1000:
                 return await ctx.send(embed=discord.Embed(
-                    title="✖ invalid sides",
+                    title="⊘ invalid sides",
                     description="use a number between `2` and `1000`, or `NdN` format.",
-                    color=discord.Color.red()
+                    color=0xff4500
                 ))
             result = random.randint(1, sides)
             return await ctx.send(embed=discord.Embed(
                 title=f"⚄ d{sides}",
                 description=f"rolled **{result}**",
-                color=discord.Color.blue()
+                color=0x5865f2
             ))
 
         await ctx.send(embed=discord.Embed(
-            title="✖ invalid format",
+            title="⊘ invalid format",
             description="use `!roll 6`, `!roll 2d6`, or `!roll 3d20`",
-            color=discord.Color.red()
+            color=0xff4500
         ))
 
 async def setup(bot) -> None:

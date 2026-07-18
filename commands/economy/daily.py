@@ -56,7 +56,7 @@ class Daily(commands.Cog):
         if debt_paid:
             desc += f"\n⌬ {debt_paid:,} went toward your debt"
 
-        embed = discord.Embed(description=desc, color=0xeb459e)
+        embed = discord.Embed(description=desc, color=0x5865f2)
         embed.set_footer(text=f"daily streak: {streak} · wallet: {data[uid]['wallet']:,} cores")
         await ctx.send(embed=embed)
 

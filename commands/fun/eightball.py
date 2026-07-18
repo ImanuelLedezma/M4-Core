@@ -25,7 +25,7 @@ class EightBall(commands.Cog):
     @commands.hybrid_command(name="8ball", aliases=["ask"], description="ask the magic 8ball a question", help="Ask the magic 8ball a yes/no question and receive a cryptic answer.")
     @cooldown(1, 5, BucketType.user)
     async def eightball(self, ctx, *, question: str):
-        embed = discord.Embed(title="⊙ 8ball", color=discord.Color.purple())
+        embed = discord.Embed(title="⊙ 8ball", color=0x5865f2)
         embed.add_field(name="question", value=question, inline=False)
         embed.add_field(name="answer", value=f"🎱 **{random.choice(RESPONSES)}**", inline=False)
         embed.set_thumbnail(url=random.choice(GIFS))

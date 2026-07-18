@@ -18,9 +18,9 @@ class Rps(commands.Cog):
         choice = choice.lower()
         if choice not in CHOICES:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid choice",
+                title="⊘ invalid choice",
                 description="choose `rock`, `paper`, or `scissors`.",
-                color=discord.Color.red()
+                color=0xff4500
             ))
 
         bot_choice = random.choice(CHOICES)
@@ -28,15 +28,15 @@ class Rps(commands.Cog):
 
         if choice == bot_choice:
             result = "tie"
-            color = discord.Color.yellow()
+            color = 0xf1c40f
             rps_update(ctx.author.id, ties=1)
         elif BEATS[choice] == bot_choice:
             result = "you win!"
-            color = discord.Color.green()
+            color = 0x57f287
             rps_update(ctx.author.id, wins=1)
         else:
             result = "you lose.."
-            color = discord.Color.red()
+            color = 0xff4500
             rps_update(ctx.author.id, losses=1)
 
         total = stats["wins"] + stats["losses"] + stats["ties"]

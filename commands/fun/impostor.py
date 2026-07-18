@@ -47,7 +47,7 @@ class Impostor(commands.Cog):
         embed = discord.Embed(
             title="⌖ scanning",
             description=SCAN_STEPS[0],
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         msg = await ctx.send(embed=embed)
@@ -76,7 +76,7 @@ class Impostor(commands.Cog):
 
         result_embed = discord.Embed(
             title=f"{'⚠ impostor detected' if is_sus else '√ scan complete'}",
-            color=discord.Color.red() if is_sus else discord.Color.green()
+            color=0xff4500 if is_sus else 0x57f287
         )
         result_embed.set_thumbnail(url=target.display_avatar.url)
         result_embed.add_field(name="subject", value=target.mention, inline=True)

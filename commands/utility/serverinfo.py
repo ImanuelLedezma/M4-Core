@@ -33,7 +33,7 @@ class ServerInfo(commands.Cog):
         embed = discord.Embed(
             title=guild.name,
             description=guild.description or "no description set.",
-            color=discord.Color.blue()
+            color=0x5865f2
         )
 
         if guild.icon:
@@ -135,7 +135,7 @@ class ServerInfo(commands.Cog):
     async def boosters(self, ctx):
         guild = ctx.guild
         boosters = guild.premium_subscribers
-        embed = discord.Embed(title="boost status", color=discord.Color.magenta())
+        embed = discord.Embed(title="boost status", color=0x5865f2)
         embed.add_field(name="level", value=f"`{guild.premium_tier}`", inline=True)
         embed.add_field(name="boosts", value=f"`{guild.premium_subscription_count}`", inline=True)
         embed.add_field(name="boosters", value=f"`{len(boosters)}`", inline=True)

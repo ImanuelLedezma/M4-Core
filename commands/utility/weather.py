@@ -41,12 +41,12 @@ class Weather(commands.Cog):
     async def weather(self, ctx, *, city: str):
         api_key = os.getenv("OPENWEATHER_KEY")
         if not api_key:
-            return await ctx.send(embed=discord.Embed(description="✖ OPENWEATHER_KEY not set in .env.", color=0xff4500))
+            return await ctx.send(embed=discord.Embed(description="⊘ OPENWEATHER_KEY not set in .env.", color=0xff4500))
 
         is_forecast = city.lower().startswith("forecast ")
         search = city[9:].strip() if is_forecast else city
         if not search:
-            return await ctx.send(embed=discord.Embed(description="✖ specify a city name.", color=0xff4500))
+            return await ctx.send(embed=discord.Embed(description="⊘ specify a city name.", color=0xff4500))
 
         if is_forecast:
             url = "https://api.openweathermap.org/data/2.5/forecast"
@@ -57,12 +57,12 @@ class Weather(commands.Cog):
             data = await self._fetch(url, {"q": search, "appid": api_key, "units": "metric"})
         except aiohttp.ClientError:
             return await ctx.send(embed=discord.Embed(
-                description="✖ could not reach the weather service.",
+                description="⊘ could not reach the weather service.",
                 color=0xff4500
             ))
         if data is None:
             return await ctx.send(embed=discord.Embed(
-                description="✖ city not found or api error.",
+                description="⊘ city not found or api error.",
                 color=0xff4500
             ))
 

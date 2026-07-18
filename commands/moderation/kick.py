@@ -33,13 +33,13 @@ class Kick(commands.Cog):
     async def kick(self, ctx, member: discord.Member, *, reason: str = "no reason provided"):
         if member == ctx.author:
             return await ctx.send(embed=discord.Embed(
-                title="✖ invalid target", description="you can't kick yourself.", color=discord.Color.red()
+                title="⊘ invalid target", description="you can't kick yourself.", color=0xff4500
             ))
         if member.top_role >= ctx.author.top_role:
             return await ctx.send(embed=discord.Embed(
-                title="✖ insufficient hierarchy",
+                title="⊘ insufficient hierarchy",
                 description="you can't kick someone with an equal or higher role.",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         if not await self._confirm(ctx, member, "kick"):
             return
@@ -48,7 +48,7 @@ class Kick(commands.Cog):
             await member.send(embed=discord.Embed(
                 title=f"you've been kicked from {ctx.guild.name}",
                 description=f"**reason:** {reason}\n**by:** {ctx.author.name}",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         except discord.Forbidden:
             pass
@@ -57,7 +57,7 @@ class Kick(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ kicked",
             description=f"kicked {member.mention} · **{reason}**",
-            color=discord.Color.green()
+            color=0x57f287
         ))
         try:
             await ctx.message.delete()

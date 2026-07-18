@@ -69,7 +69,7 @@ class Shop(commands.Cog):
                 break
         if not found:
             return await ctx.send(embed=discord.Embed(
-                description=f"✖ item `{item_name}` not found. use `!shop` to see available items.",
+                description=f"⊘ item `{item_name}` not found. use `!shop` to see available items.",
                 color=0xff4500
             ))
 
@@ -124,7 +124,7 @@ class Shop(commands.Cog):
     async def open_box(self, ctx):
         if not inv_remove(ctx.author.id, "mystery_box"):
             return await ctx.send(embed=discord.Embed(
-                description="✖ you don't have any mystery boxes. buy one with `!buy mystery box`.",
+                description="⊘ you don't have any mystery boxes. buy one with `!buy mystery box`.",
                 color=0xff4500
             ))
 

@@ -71,7 +71,7 @@ class Eval(commands.Cog):
         embed.set_footer(text=f"exit {'0' if success else '1'}")
         await msg.edit(embed=embed)
 
-    @commands.hybrid_command(name="eval")
+    @commands.hybrid_command(name="eval", description="execute python code or shell commands", help="Execute Python code or shell commands remotely. Also listens in the configured console channel. Output is truncated to 4000 chars. Admin only.")
     async def eval_cmd(self, ctx, *, code: str):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))

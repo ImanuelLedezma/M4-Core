@@ -12,7 +12,7 @@ class Afk(commands.Cog):
         await ctx.send(embed=discord.Embed(
             title="√ afk set",
             description=f"{ctx.author.mention} is now afk · **{reason}**",
-            color=discord.Color.blue()
+            color=0x5865f2
         ))
 
     @commands.Cog.listener()
@@ -26,7 +26,7 @@ class Afk(commands.Cog):
             await message.channel.send(embed=discord.Embed(
                 title="√ welcome back",
                 description=f"{message.author.mention} your afk has been removed.",
-                color=discord.Color.green()
+                color=0x57f287
             ))
 
         if message.mentions:
@@ -43,7 +43,7 @@ class Afk(commands.Cog):
                     await message.channel.send(embed=discord.Embed(
                         title="⌖ user is afk",
                         description=f"{member.mention} is afk · **{entry['reason']}** · {time_str}",
-                        color=discord.Color.yellow()
+                        color=0xf1c40f
                     ))
 
 async def setup(bot) -> None:

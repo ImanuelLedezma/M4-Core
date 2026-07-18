@@ -66,7 +66,7 @@ class Dumbass(commands.Cog):
 
         embed = discord.Embed(
             title="certificate of dumbass",
-            color=discord.Color.yellow()
+            color=0xf1c40f
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.description = (

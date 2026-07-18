@@ -32,7 +32,7 @@ class Uptime(commands.Cog):
 
         embed = discord.Embed(
             title="⟳ system info",
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.add_field(name="uptime", value=" ".join(parts), inline=True)
         embed.add_field(name="latency", value=f"`{round(self.bot.latency * 1000)}ms`", inline=True)

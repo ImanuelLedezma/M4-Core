@@ -39,9 +39,9 @@ class Snipe(commands.Cog):
         data = self.sniped.get(ctx.channel.id)
         if not data:
             return await ctx.send(embed=discord.Embed(
-                title="✖ nothing to snipe",
+                title="⊘ nothing to snipe",
                 description="no recently deleted messages in this channel.",
-                color=discord.Color.red()
+                color=0xff4500
             ))
         if index < 1 or index > len(data):
             return await ctx.send(embed=discord.Embed(
@@ -53,7 +53,7 @@ class Snipe(commands.Cog):
         embed = discord.Embed(
             title=f"⌖ sniped ({index}/{len(data)})",
             description=entry["content"] or "*[no text content]*",
-            color=discord.Color.blue()
+            color=0x5865f2
         )
         embed.set_author(name=entry["author"].display_name, icon_url=entry["avatar"])
         embed.set_footer(text=f"deleted at {entry['at'].strftime('%H:%M:%S')} UTC")
@@ -78,7 +78,7 @@ class Snipe(commands.Cog):
         entry = data[-index]
         embed = discord.Embed(
             title=f"✏ editsniped ({index}/{len(data)})",
-            color=discord.Color.yellow()
+            color=0xf1c40f
         )
         embed.set_author(name=entry["author"].display_name, icon_url=entry["avatar"])
         embed.add_field(name="before", value=entry["before"] or "*[empty]*", inline=False)

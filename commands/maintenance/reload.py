@@ -36,13 +36,13 @@ class Reload(commands.Cog):
                     ))
                 except Exception as e:
                     await status_msg.edit(embed=discord.Embed(
-                        title="✖ failed",
+                        title="⊘ failed",
                         description=f"`{cog}`: {e}",
                         color=0xff4500
                     ))
             except Exception as e:
                 await status_msg.edit(embed=discord.Embed(
-                    title="✖ failed",
+                    title="⊘ failed",
                     description=f"`{cog}`: {e}",
                     color=0xff4500
                 ))
@@ -61,9 +61,9 @@ class Reload(commands.Cog):
                             await self.bot.load_extension(path)
                             reloaded_logs.append(f"√ `{path}` (loaded fresh)")
                         except Exception as e:
-                            reloaded_logs.append(f"✖ `{path}`: {e}")
+                            reloaded_logs.append(f"⊘ `{path}`: {e}")
                     except Exception as e:
-                        reloaded_logs.append(f"✖ `{path}`: {e}")
+                        reloaded_logs.append(f"⊘ `{path}`: {e}")
 
         log_chunk = "\n".join(reloaded_logs) or "no cogs found."
         if len(log_chunk) > 4000:

@@ -167,7 +167,7 @@ class Help(commands.Cog):
             cmd = ctx.bot.get_command(command)
             if not cmd:
                 return await ctx.send(embed=discord.Embed(
-                    description=f"✖ no command or category called `{command}`. try `!help` for the list.",
+                    description=f"⊘ no command or category called `{command}`. try `!help` for the list.",
                     color=0xff4500
                 ))
             embed = self._command_help_embed(cmd)
