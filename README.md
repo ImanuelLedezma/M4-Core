@@ -4,14 +4,19 @@ Discord bot for the Immie server, built with discord.py and cogs.
 
 ## Features
 
-- Economy system (cores currency, gambling, transfers)
-- Moderation (ban, kick, timeout, warn, purge)
-- Fun commands (8ball, ship, roast, impostor, etc.)
-- Utility (weather, translate, reminders, QR, polls)
-- AI chat via Slug (Groq API)
-- Anonymous confessions, Hall of Fame, welcome messages
-- Remote eval console, hot-reload, GitHub pull
-- Web-based terminal to manage bot, pull, restart and remotely execute code (After login)
+- **Economy system** (cores currency, gambling, transfers, rob, crime, daily, work, begging)
+- **Shop system** (`!shop` / `!buy` / `!inventory`) — buy special items that modify command behavior:
+  - *Extra Luck* — +15% success on crime/rob, +10% gambling returns
+  - *Stealthy Shoes* — halve fines when caught, steal 10% more
+  - *Invisibility Potion* — +5% success, leave no trace in logs
+- **Transaction history** (`!history`) — track earnings, losses, transfers, purchases
+- **Moderation** (ban, kick, timeout, warn, purge, slowmode, lock, lockdown, nick, move)
+- **Fun commands** (8ball, ship, roast, impostor, dice, password generator, etc.)
+- **Utility** (weather with 5-day forecast, translate, reminders, QR codes, polls, timer with DM notification, AFK, userinfo, serverinfo, snipe/editsnipe, text tools)
+- **AI chat** via Slug (Groq API)
+- **Anonymous confessions**, Hall of Fame, welcome messages, leveling, reaction roles
+- **Remote eval console**, hot-reload, GitHub pull
+- **Web-based terminal** to manage bot, pull, restart, and remotely execute code (after PIN login)
 
 ## Dependencies
 
@@ -25,12 +30,13 @@ Pillow
 deep-translator
 requests
 msgpack
+pyfiglet
 ```
 
 Install with:
 
 ```bash
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 If you want to expose your web panel to the Internet, you may also need a reverse proxy such as Nginx or cloudflared.
@@ -49,23 +55,23 @@ cd M4-Core
 ```bash
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 **3. Set environment variables**
 
-You'll need to set enviroment variables for the bot to work.
+You'll need to set environment variables for the bot to work.
 
 | Variable | Required | Description |
 |---|---|---|
 | `DISCORD_TOKEN` | ✓ | your bot token |
 | `PANEL_PORT` | - | port for the web panel |
 | `PANEL_HOSTNAME` | - | fake hostname to show in web panel |
-| `PANEL_USER` | - | user name to show in web pabel |
+| `PANEL_USER` | - | user name to show in web panel |
 | `SESSION_SECRET` | - | signing session cookies for web panel|
 | `PANEL_PIN` | ✓ | password to enter web panel |
-| `EMERGENCY_PASSPHRASE` | - | phrase to DM bot for to regain emergency admin access |
-| `GROQ_KEY` | ✓ | groq api key for slug ai chat |
+| `EMERGENCY_PASSPHRASE` | - | phrase to DM bot to regain emergency admin access |
+| `GROQ_KEY` | ✓ | groq API key for slug AI chat |
 | `OPENWEATHER_KEY` | ✓ | openweathermap key for `!weather` |
 
 **4. Configure `config.yaml`**
@@ -85,14 +91,15 @@ channels:
   welcome: 0
 ```
 
-You can also set channels at runtime using the set commands (e.g. `!setwelcome #channel`).
+You can also set channels at runtime using set commands (e.g. `!setwelcome #channel`).
 
 **5. Add yourself as admin**
 
 Edit `admins.yaml`:
 
 ```yaml
-- YOUR_DISCORD_USER_ID
+admins:
+  - YOUR_DISCORD_USER_ID
 ```
 
 **6. Run the bot**
@@ -103,7 +110,6 @@ python main.py
 
 ## Branches
 
-- **main** — stable, production-ready
 - **canary** — active development and testing
 
 ## Hot Reload
@@ -112,4 +118,4 @@ Use `!reload` to reload all cogs without restarting, or `!pull [branch]` to sync
 
 ## Data
 
-All data such as Economy or statistics are stored in .msgpack format inside the data/ folder.
+All data such as economy, shop inventory, transaction history, and statistics are stored in `.msgpack` format inside the `data/` folder.

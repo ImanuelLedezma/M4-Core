@@ -2,8 +2,8 @@ import discord
 import random
 from discord.ext import commands
 from helpers.economy_base import load_bank, save_bank, open_account, get_cooldown, set_cooldown, apply_loss, apply_earnings, debt_prompt
+from commands.economy.shop import user_has_item
 
-ROB_COOLDOWN = 300
 CRIME_COOLDOWN = 600
 
 CRIMES = [
@@ -26,60 +26,7 @@ class Crime(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
 
-    @commands.hybrid_command(name="rob", description="attempt to steal cores from a user's wallet", help="Try to rob another user's wallet. 45% success rate — steal up to 25% of their wallet (max 1000). Fail and you pay a fine to your victim. Target must have at least 150 cores. 5min cooldown.")
-    async def rob(self, ctx, member: discord.Member):
-        if member.id == ctx.author.id:
-            return await ctx.send("⊘ you can't rob yourself!")
-
-        data = load_bank()
-        data = open_account(ctx.author.id, data)
-        data = open_account(member.id, data)
-
-        data = await debt_prompt(ctx, self.bot, data, ctx.author.id)
-
-        remaining = get_cooldown(ctx.author.id, data, "last_rob", ROB_COOLDOWN)
-        if remaining:
-            mins = round(remaining / 60, 1)
-            return await ctx.send(embed=discord.Embed(
-                description=f"⧖ lay low for {mins}m", color=0xff4500
-            ), ephemeral=True)
-
-        victim_id = str(member.id)
-        robber_id = str(ctx.author.id)
-
-        if data[victim_id]["wallet"] < 150:
-            return await ctx.send(embed=discord.Embed(
-                description="⊘ this user is too poor to rob. look for someone with at least ⌬ 150 in their wallet.",
-                color=0xff4500
-            ))
-
-        set_cooldown(ctx.author.id, data, "last_rob")
-
-        if random.random() < 0.45:
-            max_steal = min(1000, int(data[victim_id]["wallet"] * 0.25))
-            stolen = random.randint(50, max(50, max_steal))
-            data[victim_id]["wallet"] -= stolen
-            debt_paid, to_wallet = apply_earnings(robber_id, data, stolen)
-            save_bank(data)
-            desc = f"╼ **theft success** ╾\nyou stole **⌬ {stolen:,}** from {member.display_name.lower()}"
-            if debt_paid:
-                desc += f"\n⌬ {debt_paid:,} went toward your debt"
-            embed = discord.Embed(description=desc, color=0x57f287)
-        else:
-            fine = random.randint(100, 500)
-            apply_loss(robber_id, data, fine)
-            data[victim_id]["wallet"] += fine
-            save_bank(data)
-            debt = data[robber_id]["debt"]
-            scene = random.choice(BUST_SCENES)
-            desc = f"⊘ **busted!**\n{scene}. fined **⌬ {fine:,}** to {member.display_name.lower()}"
-            if debt > 0:
-                desc += f"\n⌬ {debt:,} now in debt"
-            embed = discord.Embed(description=desc, color=0xff4500)
-
-        await ctx.send(embed=embed)
-
-    @commands.hybrid_command(name="crime", description="commit a crime for cores", help="Commit a random crime to earn 200-900 cores. 40% chance of getting caught — pay a fine of 100-600 cores. 10min cooldown.")
+    @commands.hybrid_command(name="crime", description="commit a crime for cores", help="Commit a random crime to earn 200-900 cores. 40% chance of getting caught — pay a fine of 100-600 cores. 10min cooldown. Extra Luck (+15% success), Stealthy Shoes (halve fines), Invisibility Potion (+5% success, no log).")
     async def crime(self, ctx):
         data = load_bank()
         data = open_account(ctx.author.id, data)
@@ -96,8 +43,31 @@ class Crime(commands.Cog):
 
         set_cooldown(ctx.author.id, data, "last_crime")
 
-        if random.random() < 0.4:
+        has_luck = user_has_item(ctx.author.id, "extra_luck")
+        has_stealth = user_has_item(ctx.author.id, "stealthy_shoes")
+        has_invis = user_has_item(ctx.author.id, "invisibility_potion")
+
+        success_chance = 0.6
+        if has_luck:
+            success_chance += 0.15
+        if has_invis:
+            success_chance += 0.05
+
+        if random.random() < success_chance:
+            earnings = random.randint(200, 900)
+            if has_luck:
+                earnings = int(earnings * 1.1)
+            debt_paid, to_wallet = apply_earnings(user_id, data, earnings)
+            save_bank(data)
+            act = random.choice(CRIMES)
+            desc = f"╼ **crime pays** ╾\nyou {act} and earned **⌬ {earnings:,}** cores"
+            if debt_paid:
+                desc += f"\n⌬ {debt_paid:,} went toward your debt"
+            embed = discord.Embed(description=desc, color=0x57f287)
+        else:
             fine = random.randint(100, 600)
+            if has_stealth:
+                fine = max(50, fine // 2)
             apply_loss(user_id, data, fine)
             save_bank(data)
             debt = data[user_id]["debt"]
@@ -106,17 +76,10 @@ class Crime(commands.Cog):
             if debt > 0:
                 desc += f"\n⌬ {debt:,} now in debt"
             embed = discord.Embed(description=desc, color=0xff4500)
-        else:
-            earnings = random.randint(200, 900)
-            debt_paid, to_wallet = apply_earnings(user_id, data, earnings)
-            save_bank(data)
-            act = random.choice(CRIMES)
-            desc = f"╼ **crime pays** ╾\nyou {act} and earned **⌬ {earnings:,}** cores"
-            if debt_paid:
-                desc += f"\n⌬ {debt_paid:,} went toward your debt"
-            embed = discord.Embed(description=desc, color=0x57f287)
 
         embed.set_footer(text=f"wallet: {data[user_id]['wallet']:,} cores")
+        if has_invis:
+            embed.set_footer(text=f"wallet: {data[user_id]['wallet']:,} cores · no trace left behind")
         await ctx.send(embed=embed)
 
 async def setup(bot) -> None:

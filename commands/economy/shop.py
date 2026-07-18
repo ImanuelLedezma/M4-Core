@@ -9,9 +9,9 @@ SHOP_FILE = "shop.msgpack"
 INVENTORY_FILE = "inventory.msgpack"
 
 SHOP_ITEMS = {
-    "vip": {"name": "VIP", "description": "VIP role with exclusive perks", "price": 50000, "role": None},
-    "nitro": {"name": "Nitro Booster", "description": "Claim your server booster role", "price": 25000, "role": None},
-    "custom_color": {"name": "Custom Color", "description": "Pick any color for your name", "price": 10000, "role": None},
+    "extra_luck": {"name": "Extra Luck", "description": "+15% success on crime and robbery, +10% better gambling odds. Lady luck smiles on you.", "price": 30000, "role": None},
+    "stealthy_shoes": {"name": "Stealthy Shoes", "description": "Move like a shadow. Halve fines when caught, steal 10% more in robberies.", "price": 45000, "role": None},
+    "invisibility_potion": {"name": "Invisibility Potion", "description": "Erase your tracks. Crimes leave no trace in logs, +5% success on shady activities.", "price": 60000, "role": None},
 }
 
 INV_MAX = 50
@@ -30,6 +30,12 @@ def load_inv():
 
 def save_inv(data):
     save(INVENTORY_FILE, data)
+
+def user_has_item(user_id: int, item_key: str) -> bool:
+    inv = load_inv()
+    uid = str(user_id)
+    items = inv.get(uid, [])
+    return any(i["item"] == item_key for i in items)
 
 class Shop(commands.Cog):
     def __init__(self, bot) -> None:

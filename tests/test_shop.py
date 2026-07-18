@@ -1,9 +1,11 @@
-from commands.economy.shop import load_shop, SHOP_ITEMS
+from commands.economy.shop import load_shop, SHOP_ITEMS, user_has_item
 
 def test_shop_has_default_items():
     items = load_shop()
     assert len(items) > 0
-    assert "vip" in items
+    assert "extra_luck" in items
+    assert "stealthy_shoes" in items
+    assert "invisibility_potion" in items
 
 def test_shop_item_structure():
     items = load_shop()
@@ -16,7 +18,12 @@ def test_shop_item_structure():
 
 def test_shop_default_values():
     items = load_shop()
-    assert items["vip"]["name"] == "VIP"
-    assert items["vip"]["price"] == 50000
-    assert items["nitro"]["name"] == "Nitro Booster"
-    assert items["custom_color"]["name"] == "Custom Color"
+    assert items["extra_luck"]["name"] == "Extra Luck"
+    assert items["extra_luck"]["price"] == 30000
+    assert items["stealthy_shoes"]["name"] == "Stealthy Shoes"
+    assert items["stealthy_shoes"]["price"] == 45000
+    assert items["invisibility_potion"]["name"] == "Invisibility Potion"
+    assert items["invisibility_potion"]["price"] == 60000
+
+def test_user_has_item_empty():
+    assert user_has_item(999999999, "extra_luck") is False
