@@ -6,6 +6,10 @@ __pycache__/
 *.py[cod]
 *.command
 .env
+*.pyc
+server_settings.json
+bot.log
+cloudflared/
 .DS_Store
 .AppleDouble
 .LSOverride
