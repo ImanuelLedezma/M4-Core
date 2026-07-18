@@ -1,4 +1,5 @@
-"""Safety checks for M4 Core bot modules.
+"""Runtime data integrity checks for M4 Core.
 
-Run with: python -m safety.check_all
+Run on startup to detect corrupted balances, broken shop configs,
+missing data files, and other issues that would cause silent failures.
 """
