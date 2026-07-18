@@ -1,15 +1,12 @@
 import discord
 from discord.ext import commands
 from helpers.config import load_config, save_config, get_channel_id
-from helpers.storage import load, save
-
-POSTED_FILE = "hof_posted.msgpack"
+from helpers.database import hof_has, hof_add
 
 class HallOfFame(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.channel_id = get_channel_id("hall_of_fame")
-        self._posted: set[int] = set(load(POSTED_FILE) or [])
 
     @commands.hybrid_command(name="hof", description="add a replied message to the hall of fame", help="Add a message to the Hall of Fame by replying to it. Shows message content, author, source channel, and a jump link. Supports images. Prevents duplicate entries. Requires Manage Messages permission.")
     @commands.has_permissions(manage_messages=True)
@@ -27,7 +24,7 @@ class HallOfFame(commands.Cog):
                 description="✖ couldn't find the referenced message!", color=0xff4500
             ), delete_after=5)
 
-        if ref_msg.id in self._posted:
+        if hof_has(ref_msg.id):
             return await ctx.send(embed=discord.Embed(
                 description="✖ that message is already in the hall of fame.",
                 color=0xff4500
@@ -39,8 +36,7 @@ class HallOfFame(commands.Cog):
                 description="✖ hall of fame channel not found!", color=0xff4500
             ), delete_after=5)
 
-        self._posted.add(ref_msg.id)
-        save(POSTED_FILE, list(self._posted))
+        hof_add(ref_msg.id)
 
         author = ref_msg.author
         embed = discord.Embed(

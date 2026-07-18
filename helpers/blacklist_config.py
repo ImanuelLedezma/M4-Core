@@ -1,14 +1,14 @@
-from typing import Set, Any
-from helpers.storage import load, save
+from helpers.database import blacklist_has, blacklist_add, blacklist_remove, blacklist_all
 
-BLACKLIST_FILE: str = "blacklist.msgpack"
+def load_blacklist() -> set[int]:
+    return set(blacklist_all())
 
-def load_blacklist() -> Set[int]:
-    data: Any = load(BLACKLIST_FILE)
-    return set(data) if data else set()
-
-def save_blacklist(blacklist: Set[int]) -> None:
-    save(BLACKLIST_FILE, list(blacklist))
+def save_blacklist(blacklist: set[int]) -> None:
+    current = set(blacklist_all())
+    for uid in blacklist - current:
+        blacklist_add(uid)
+    for uid in current - blacklist:
+        blacklist_remove(uid)
 
 def is_blacklisted(user_id: int) -> bool:
-    return user_id in load_blacklist()
+    return blacklist_has(user_id)

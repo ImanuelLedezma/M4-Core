@@ -1,7 +1,7 @@
 """Data integrity sanity checks run at startup.
 
-Catches corrupted msgpack files, invalid balances, missing required data,
-and other issues that would otherwise surface as confusing runtime errors.
+Validates SQLite database, config, and admin files for corruption
+or missing data that would cause runtime failures.
 """
 import os
 import sys
@@ -10,20 +10,10 @@ import math
 DATA_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data"))
 CONFIG_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config.yaml"))
 ADMINS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "admins.yaml"))
-ENV_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
 REQUIRED_CHANNEL_KEYS = ("log", "console", "ai_chat", "dictionary", "confession", "hall_of_fame", "welcome")
 
 _errors: list[str] = []
 _warnings: list[str] = []
-
-
-def _load_msgpack(name: str):
-    from helpers.storage import load
-    try:
-        return load(name)
-    except Exception as e:
-        _errors.append(f"corrupt {name}: {e}")
-        return None
 
 
 def check_data_directory():
@@ -36,16 +26,13 @@ def check_data_directory():
 
 
 def check_bank_integrity():
-    bank = _load_msgpack("bank.msgpack")
-    if bank is None:
-        return
-    if not isinstance(bank, dict):
-        _errors.append("bank.msgpack is not a dict -- data corrupted")
+    from helpers.database import bank_all
+    try:
+        bank = bank_all()
+    except Exception as e:
+        _errors.append(f"bank database error: {e}")
         return
     for uid, acct in bank.items():
-        if not isinstance(acct, dict):
-            _errors.append(f"bank: account '{uid}' is not a dict -- possible corruption")
-            continue
         for field in ("wallet", "bank", "debt"):
             val = acct.get(field)
             if val is None:
@@ -56,34 +43,24 @@ def check_bank_integrity():
                 _errors.append(f"bank: account '{uid}' '{field}' is NaN/inf")
             elif val < 0:
                 _warnings.append(f"bank: account '{uid}' '{field}' is negative ({val})")
-        for ts_field in ("last_work", "last_beg", "last_daily", "last_crime", "last_rob"):
-            ts = acct.get(ts_field)
-            if ts is not None and not isinstance(ts, (int, float)):
-                _warnings.append(f"bank: account '{uid}' '{ts_field}' has unexpected type {type(ts).__name__}")
 
 
 def check_shop_integrity():
-    from commands.economy.shop import load_shop
+    from helpers.database import shop_list
     try:
-        items = load_shop()
+        items = shop_list()
     except Exception as e:
-        _errors.append(f"shop data failed to load: {e}")
+        _errors.append(f"shop database error: {e}")
         return
     if not items:
         _warnings.append("shop is empty -- no items available for purchase")
         return
-    for key, item in items.items():
-        if not isinstance(item, dict):
-            _errors.append(f"shop item '{key}' is not a dict")
-            continue
-        for field in ("name", "description", "price", "role"):
-            if field not in item:
-                _errors.append(f"shop item '{key}' missing '{field}'")
-        price = item.get("price")
-        if price is not None and (not isinstance(price, int) or price <= 0):
-            _errors.append(f"shop item '{key}' has invalid price: {price}")
-        if not item.get("name", "").strip():
+    for row in items:
+        key = row["key"]
+        if not row.get("name", "").strip():
             _errors.append(f"shop item '{key}' has empty name")
+        if not isinstance(row.get("price"), int) or row["price"] <= 0:
+            _errors.append(f"shop item '{key}' has invalid price: {row.get('price')}")
 
 
 def check_config_integrity():
@@ -100,9 +77,6 @@ def check_config_integrity():
     for key in REQUIRED_CHANNEL_KEYS:
         if key not in channels:
             _warnings.append(f"config.yaml: channel '{key}' not set")
-    lock_cfg = cfg.get("lock", {})
-    if lock_cfg and "revoke_roles" in lock_cfg and not isinstance(lock_cfg["revoke_roles"], list):
-        _errors.append("config.yaml: 'lock.revoke_roles' should be a list")
 
 
 def check_admins_integrity():
@@ -116,9 +90,6 @@ def check_admins_integrity():
         admins = data.get("admins", [])
         if not admins:
             _warnings.append("admins.yaml has empty admin list -- no one can use admin commands")
-        for a in admins:
-            if not isinstance(a, int):
-                _warnings.append(f"admins.yaml: '{a}' is not a valid user ID (should be int)")
     except Exception as e:
         _errors.append(f"admins.yaml failed to parse: {e}")
 

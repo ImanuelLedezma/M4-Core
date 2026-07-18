@@ -1,13 +1,10 @@
 import discord
 import random
 from discord.ext import commands
-from helpers.storage import load, save
 from helpers.economy_base import load_bank, save_bank, open_account
 from helpers.admins_config import is_admin
 from commands.economy.history import add_tx
-
-SHOP_FILE = "shop.msgpack"
-INVENTORY_FILE = "inventory.msgpack"
+from helpers.database import shop_list, shop_save, inv_get, inv_add, inv_remove, inv_count, inv_user_has
 
 SHOP_ITEMS = {
     "donut": {"name": "Donut", "description": "Bribe the fuzz with a glazed donut. Halves your next fine when busted on crime or robbery.", "price": 5000, "role": None},
@@ -23,26 +20,22 @@ SHOP_ITEMS = {
 
 INV_MAX = 50
 
+
 def load_shop():
-    data = load(SHOP_FILE)
+    data = shop_list()
     if not data:
+        shop_save(SHOP_ITEMS)
         return dict(SHOP_ITEMS)
-    return data
+    return {r["key"]: {"name": r["name"], "description": r["description"], "price": r["price"], "role": r["role_id"]} for r in data}
 
-def save_shop(data):
-    save(SHOP_FILE, data)
 
-def load_inv():
-    return load(INVENTORY_FILE)
+def save_shop(items):
+    shop_save(items)
 
-def save_inv(data):
-    save(INVENTORY_FILE, data)
 
 def user_has_item(user_id: int, item_key: str) -> bool:
-    inv = load_inv()
-    uid = str(user_id)
-    items = inv.get(uid, [])
-    return any(i["item"] == item_key for i in items)
+    return inv_user_has(user_id, item_key)
+
 
 class Shop(commands.Cog):
     def __init__(self, bot) -> None:
@@ -93,9 +86,7 @@ class Shop(commands.Cog):
                 color=0xff4500
             ))
 
-        inv = load_inv()
-        uid_inv = inv.setdefault(uid, [])
-        if len(uid_inv) >= INV_MAX:
+        if inv_count(ctx.author.id) >= INV_MAX:
             return await ctx.send(embed=discord.Embed(
                 description=f"⊘ your inventory is full (max {INV_MAX} items).",
                 color=0xff4500
@@ -104,8 +95,7 @@ class Shop(commands.Cog):
         data[uid]["wallet"] -= price
         save_bank(data)
 
-        uid_inv.append({"item": k, "name": item["name"], "purchased_at": discord.utils.utcnow().isoformat()})
-        save_inv(inv)
+        inv_add(ctx.author.id, k, item["name"])
 
         add_tx(ctx.author.id, "purchase", -price, item["name"])
         await ctx.send(embed=discord.Embed(
@@ -115,9 +105,7 @@ class Shop(commands.Cog):
 
     @commands.hybrid_command(name="inventory", aliases=["inv"], description="view your purchased items", help="Shows all items you've purchased from the shop. Use !shop to browse available items and !buy <item> to purchase.")
     async def inventory(self, ctx):
-        inv = load_inv()
-        uid = str(ctx.author.id)
-        items = inv.get(uid, [])
+        items = inv_get(ctx.author.id)
         if not items:
             return await ctx.send(embed=discord.Embed(
                 description="your inventory is empty. use `!shop` to browse items.",
@@ -134,19 +122,13 @@ class Shop(commands.Cog):
 
     @commands.hybrid_command(name="open", description="open a mystery box from your inventory", help="Open a Mystery Box to reveal a random prize. You might win cores, items, or walk away with nothing. Each box is consumed on use.")
     async def open_box(self, ctx):
-        inv = load_inv()
-        uid = str(ctx.author.id)
-        items = inv.get(uid, [])
-        idx = next((i for i, e in enumerate(items) if e["item"] == "mystery_box"), None)
-        if idx is None:
+        if not inv_remove(ctx.author.id, "mystery_box"):
             return await ctx.send(embed=discord.Embed(
                 description="✖ you don't have any mystery boxes. buy one with `!buy mystery box`.",
                 color=0xff4500
             ))
 
-        items.pop(idx)
-        save_inv(inv)
-
+        uid = str(ctx.author.id)
         roll = random.random()
         if roll < 0.05:
             prize = random.randint(50000, 100000)

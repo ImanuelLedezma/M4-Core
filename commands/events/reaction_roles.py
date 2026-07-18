@@ -1,18 +1,10 @@
 import discord
 from discord.ext import commands
-from helpers.storage import load, save
-
-RR_FILE = "reaction_roles.msgpack"
+from helpers.database import rr_get, rr_set, rr_delete, rr_all
 
 class ReactionRoles(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
-
-    def _load(self) -> dict:
-        return load(RR_FILE)
-
-    def _save(self, data: dict) -> None:
-        save(RR_FILE, data)
 
     @commands.hybrid_command(name="reactionrole", aliases=["rr", "addrr"], description="add a reaction role to a message", help="Add a reaction role to a message. Usage: !rr #channel message_id :emoji: @role. Reacting with the emoji gives the role, unreacting removes it. Requires Manage Roles permission.")
     @commands.has_permissions(manage_roles=True)
@@ -47,10 +39,8 @@ class ReactionRoles(commands.Cog):
                 color=0xff4500
             ))
 
-        data = self._load()
         key = f"{channel.id}:{mid}:{emoji}"
-        data[key] = role.id
-        self._save(data)
+        rr_set(key, role.id)
 
         await ctx.send(embed=discord.Embed(
             description=f"√ reaction role set: {emoji} → {role.mention} in {channel.mention}",
@@ -60,15 +50,13 @@ class ReactionRoles(commands.Cog):
     @commands.hybrid_command(name="removerr", aliases=["delrr", "deleterr"], description="remove a reaction role", help="Remove a reaction role binding. Usage: !removerr #channel message_id :emoji:. Requires Manage Roles permission.")
     @commands.has_permissions(manage_roles=True)
     async def remove_rr(self, ctx, channel: discord.TextChannel, message_id: str, emoji: str):
-        data = self._load()
         key = f"{channel.id}:{message_id}:{emoji}"
-        if key not in data:
+        if rr_get(key) is None:
             return await ctx.send(embed=discord.Embed(
                 description=f"⊘ no reaction role found for `{emoji}` on that message.",
                 color=0xff4500
             ))
-        del data[key]
-        self._save(data)
+        rr_delete(key)
         await ctx.send(embed=discord.Embed(
             description=f"√ reaction role removed for {emoji}",
             color=0x57f287
@@ -76,7 +64,7 @@ class ReactionRoles(commands.Cog):
 
     @commands.hybrid_command(name="listrr", aliases=["rrlist"], description="list all reaction roles in this server", help="Shows all configured reaction roles in the server with emoji, channel, and role.")
     async def list_rr(self, ctx):
-        data = self._load()
+        data = rr_all()
         channel_keys = [k for k in data if k.split(":")[0].isdigit() and ctx.guild.get_channel(int(k.split(":")[0]))]
         if not channel_keys:
             return await ctx.send(embed=discord.Embed(
@@ -102,22 +90,19 @@ class ReactionRoles(commands.Cog):
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
             return
-        data = self._load()
-        key = f"{payload.channel_id}:{payload.message_id}:{payload.emoji.name}"
-        if key not in data:
-            if payload.emoji.id:
-                for fmt in (f"<:{payload.emoji.name}:{payload.emoji.id}>", f"<a:{payload.emoji.name}:{payload.emoji.id}>"):
-                    alt_key = f"{payload.channel_id}:{payload.message_id}:{fmt}"
-                    if alt_key in data:
-                        key = alt_key
-                        break
-            if key not in data:
-                return
+        role_id = rr_get(f"{payload.channel_id}:{payload.message_id}:{payload.emoji.name}")
+        if role_id is None and payload.emoji.id:
+            for fmt in (f"<:{payload.emoji.name}:{payload.emoji.id}>", f"<a:{payload.emoji.name}:{payload.emoji.id}>"):
+                role_id = rr_get(f"{payload.channel_id}:{payload.message_id}:{fmt}")
+                if role_id is not None:
+                    break
+        if role_id is None:
+            return
 
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return
-        role = guild.get_role(data[key])
+        role = guild.get_role(role_id)
         if not role:
             return
         member = guild.get_member(payload.user_id)
@@ -133,22 +118,19 @@ class ReactionRoles(commands.Cog):
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
             return
-        data = self._load()
-        key = f"{payload.channel_id}:{payload.message_id}:{payload.emoji.name}"
-        if key not in data:
-            if payload.emoji.id:
-                for fmt in (f"<:{payload.emoji.name}:{payload.emoji.id}>", f"<a:{payload.emoji.name}:{payload.emoji.id}>"):
-                    alt_key = f"{payload.channel_id}:{payload.message_id}:{fmt}"
-                    if alt_key in data:
-                        key = alt_key
-                        break
-            if key not in data:
-                return
+        role_id = rr_get(f"{payload.channel_id}:{payload.message_id}:{payload.emoji.name}")
+        if role_id is None and payload.emoji.id:
+            for fmt in (f"<:{payload.emoji.name}:{payload.emoji.id}>", f"<a:{payload.emoji.name}:{payload.emoji.id}>"):
+                role_id = rr_get(f"{payload.channel_id}:{payload.message_id}:{fmt}")
+                if role_id is not None:
+                    break
+        if role_id is None:
+            return
 
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return
-        role = guild.get_role(data[key])
+        role = guild.get_role(role_id)
         if not role:
             return
         member = guild.get_member(payload.user_id)

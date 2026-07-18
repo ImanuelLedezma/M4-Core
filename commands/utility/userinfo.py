@@ -3,9 +3,8 @@ from discord.ext import commands
 from discord.ext.commands import cooldown, BucketType
 from helpers.economy_base import load_bank, open_account
 from helpers.config import get_config
-from helpers.storage import load
+from helpers.database import warn_count
 
-WARNINGS_FILE = "warnings.msgpack"
 EXCLUDED_ROLE = get_config("userinfo.excluded_role", 1489622224267641043)
 
 class UserInfo(commands.Cog):
@@ -51,8 +50,7 @@ class UserInfo(commands.Cog):
         net = wallet + bank - debt
 
         # warnings
-        warns = load(WARNINGS_FILE)
-        warn_count = len(warns.get(str(ctx.guild.id), {}).get(uid, []))
+        wc = warn_count(ctx.guild.id, member.id)
 
         color = member.color if member.color.value else 0x2b2d31
         embed = discord.Embed(
@@ -68,7 +66,7 @@ class UserInfo(commands.Cog):
 
         embed.add_field(name="joined server", value=joined_at, inline=True)
         embed.add_field(name="joined discord", value=created_at, inline=True)
-        embed.add_field(name="warnings", value=f"`{warn_count}`", inline=True)
+        embed.add_field(name="warnings", value=f"`{wc}`", inline=True)
 
         embed.add_field(name="◈ wallet", value=f"⌬ {wallet:,}", inline=True)
         embed.add_field(name="◈ bank", value=f"⌬ {bank:,}", inline=True)

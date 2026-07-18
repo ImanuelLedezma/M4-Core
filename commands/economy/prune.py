@@ -2,16 +2,9 @@ import time
 from discord.ext import commands, tasks
 from helpers.config import get_config
 from helpers.economy_base import load_bank, save_bank
-from helpers.storage import load, save
+from helpers.database import departed_set, departed_get, departed_remove, departed_all, departed_expire
 
-DEPARTED_FILE = "departed.msgpack"
 PURGE_AFTER = get_config("prune.purge_after_days", 15) * 86400
-
-def load_departed():
-    return load(DEPARTED_FILE)
-
-def save_departed(data):
-    save(DEPARTED_FILE, data)
 
 class Prune(commands.Cog):
     def __init__(self, bot) -> None:
@@ -23,43 +16,33 @@ class Prune(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
-        departed = load_departed()
-        departed[str(member.id)] = time.time()
-        save_departed(departed)
+        departed_set(member.id, time.time())
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        departed = load_departed()
-        uid = str(member.id)
-        if uid in departed:
-            del departed[uid]
-            save_departed(departed)
+        if departed_get(member.id) is not None:
+            departed_remove(member.id)
 
     @tasks.loop(hours=24)
     async def purge_loop(self):
-        departed = load_departed()
-        if not departed:
+        if not departed_all():
             return
 
         bank = load_bank()
+        cutoff = time.time() - PURGE_AFTER
+        expired = departed_expire(cutoff)
+        if not expired:
+            return
 
-        now = time.time()
-        changed_departed = False
-        changed_bank = False
+        changed = False
+        for uid in expired:
+            uid_str = str(uid)
+            if uid_str in bank:
+                del bank[uid_str]
+                changed = True
 
-        for uid, left_at in list(departed.items()):
-            if now - left_at >= PURGE_AFTER:
-                if uid in bank:
-                    del bank[uid]
-                    changed_bank = True
-                del departed[uid]
-                changed_departed = True
-
-        if changed_bank:
+        if changed:
             save_bank(bank)
-
-        if changed_departed:
-            save_departed(departed)
 
     @purge_loop.before_loop
     async def before_purge_loop(self):

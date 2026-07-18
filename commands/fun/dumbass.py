@@ -2,7 +2,7 @@ import discord
 import random
 from discord.ext import commands
 from discord.ext.commands import cooldown, BucketType
-from helpers.storage import load, save
+from helpers.database import dumbass_increment, dumbass_leaderboard
 
 REASONS = [
     "microwaved a fork",
@@ -40,7 +40,6 @@ RANKS = [
 ]
 
 SEALS = ["🔏 certified", "📜 notarized", "⚖ legally binding", "🏛 government approved", "👁 witnessed"]
-TRACKER_FILE = "dumbass.msgpack"
 
 class Dumbass(commands.Cog):
     def __init__(self, bot) -> None:
@@ -58,16 +57,7 @@ class Dumbass(commands.Cog):
     @cooldown(1, 5, BucketType.user)
     async def dumbass(self, ctx, member: discord.Member = None):
         target = member or ctx.author
-        data = load(TRACKER_FILE)
-        gid = str(ctx.guild.id)
-        uid = str(target.id)
-
-        if gid not in data:
-            data[gid] = {}
-        data[gid][uid] = data[gid].get(uid, 0) + 1
-        count = data[gid][uid]
-        save(TRACKER_FILE, data)
-
+        count = dumbass_increment(ctx.guild.id, target.id)
         rank = self._get_rank(count)
         reason = random.choice(REASONS)
         seal = random.choice(SEALS)
@@ -94,26 +84,23 @@ class Dumbass(commands.Cog):
 
     @commands.hybrid_command(name="dumbasslb", aliases=["dblb", "dumbassleaderboard"], description="show the dumbass leaderboard", help="Shows the top 10 most certified dumbasses in the server with medal rankings.")
     async def dumbass_leaderboard(self, ctx):
-        data = load(TRACKER_FILE)
-        gid = str(ctx.guild.id)
-        guild_data = data.get(gid, {})
-        if not guild_data:
+        top = dumbass_leaderboard(ctx.guild.id)
+        if not top:
             return await ctx.send(embed=discord.Embed(
                 description="no dumbass certifications in this server yet.",
                 color=0x2b2d31
             ))
 
-        sorted_users = sorted(guild_data.items(), key=lambda x: x[1], reverse=True)[:10]
         embed = discord.Embed(title="🏆 dumbass leaderboard", color=0xf1c40f)
         medals = ["🥇", "🥈", "🥉"]
 
-        for i, (uid, count) in enumerate(sorted_users):
-            member = ctx.guild.get_member(int(uid))
+        for i, entry in enumerate(top):
+            member = ctx.guild.get_member(entry["user_id"])
             name = member.display_name if member else "unknown"
             prefix = medals[i] if i < 3 else f"`{i+1}.`"
             embed.add_field(
                 name=f"{prefix} {name}",
-                value=f"`{count}` certifications · {self._get_rank(count)} tier",
+                value=f"`{entry['count']}` certifications · {self._get_rank(entry['count'])} tier",
                 inline=False
             )
 
