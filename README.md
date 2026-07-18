@@ -40,7 +40,7 @@ If you want to expose your web panel to the Internet, you may also need a revers
 **1. Clone the repo**
 
 ```bash
-git clone https://github.com/notimm1e/M4-Core.git
+git clone https://github.com/ImanuelLedezma/M4-Core.git
 cd M4-Core
 ```
 
@@ -49,7 +49,7 @@ cd M4-Core
 ```bash
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements
 ```
 
 **3. Set environment variables**
