@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Dict, Any, Tuple
 from discord.ext import commands
 from helpers.storage import load, save
+from commands.economy.history import add_tx_sync
 
 BANK_FILE = "bank.msgpack"
 AccountData = Dict[str, Any]
@@ -87,7 +88,7 @@ def get_cooldown(user_id: int, data: AccountData, key: str, seconds: int) -> int
 def set_cooldown(user_id: int, data: AccountData, key: str) -> None:
     data[str(user_id)][key] = time.time()
 
-def apply_loss(user_id: int, data: AccountData, amount: int) -> None:
+def apply_loss(user_id: int, data: AccountData, amount: int, note: str = "") -> None:
     uid = str(user_id)
     wallet = data[uid]["wallet"]
     if amount <= wallet:
@@ -95,20 +96,24 @@ def apply_loss(user_id: int, data: AccountData, amount: int) -> None:
     else:
         data[uid]["debt"] += amount - wallet
         data[uid]["wallet"] = 0
+    add_tx_sync(user_id, "loss", -amount, note)
 
-def apply_earnings(user_id: int, data: AccountData, amount: int) -> Tuple[int, int]:
+def apply_earnings(user_id: int, data: AccountData, amount: int, note: str = "") -> Tuple[int, int]:
     uid = str(user_id)
     debt = data[uid]["debt"]
     if debt > 0:
         if amount >= debt:
             data[uid]["debt"] = 0
             data[uid]["wallet"] += amount - debt
+            add_tx_sync(user_id, "earn", amount, note)
             return debt, amount - debt
         else:
             data[uid]["debt"] -= amount
+            add_tx_sync(user_id, "earn", amount, note)
             return amount, 0
     else:
         data[uid]["wallet"] += amount
+        add_tx_sync(user_id, "earn", amount, note)
         return 0, amount
 
 async def debt_prompt(ctx: commands.Context, bot: commands.Bot, data: AccountData, user_id: int) -> AccountData:

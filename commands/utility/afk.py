@@ -22,7 +22,7 @@ class Afk(commands.Cog):
             "reason": reason,
             "at": discord.utils.utcnow().isoformat(),
         }
-        self._save_all(data)
+        await self._save_all(data)
         await ctx.send(embed=discord.Embed(
             title="√ afk set",
             description=f"{ctx.author.mention} is now afk · **{reason}**",

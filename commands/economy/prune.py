@@ -13,7 +13,7 @@ def load_departed():
 def save_departed(data):
     save(DEPARTED_FILE, data)
 
-class AutoPurge(commands.Cog):
+class Prune(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
         self.purge_loop.start()
@@ -66,4 +66,4 @@ class AutoPurge(commands.Cog):
         await self.bot.wait_until_ready()
 
 async def setup(bot) -> None:
-    await bot.add_cog(AutoPurge(bot))
+    await bot.add_cog(Prune(bot))

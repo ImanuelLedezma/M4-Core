@@ -138,6 +138,19 @@ class Logger(commands.Cog):
         await ctx.send(content=content, files=files if files else None)
 
     @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if before.author.bot or not before.guild or before.guild.id != GUILD_ID:
+            return
+        if before.content == after.content:
+            return
+        embed = discord.Embed(title="✏ message edited", color=0xf1c40f, timestamp=discord.utils.utcnow())
+        embed.add_field(name="user", value=before.author.mention)
+        embed.add_field(name="channel", value=before.channel.mention)
+        embed.add_field(name="before", value=before.content[:1000] or "*[no content]*", inline=False)
+        embed.add_field(name="after", value=after.content[:1000] or "*[no content]*", inline=False)
+        await self.log(before.guild, embed)
+
+    @commands.Cog.listener()
     async def on_message_delete(self, message):
         if not message.guild or message.guild.id != GUILD_ID or message.author.bot:
             return

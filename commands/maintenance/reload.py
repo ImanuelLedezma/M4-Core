@@ -3,7 +3,7 @@ from discord.ext import commands
 import os
 from helpers.admins_config import is_admin
 
-class Admin(commands.Cog):
+class Reload(commands.Cog):
     def __init__(self, bot) -> None:
         self.bot = bot
 
@@ -107,4 +107,4 @@ class Admin(commands.Cog):
             ))
 
 async def setup(bot) -> None:
-    await bot.add_cog(Admin(bot))
+    await bot.add_cog(Reload(bot))

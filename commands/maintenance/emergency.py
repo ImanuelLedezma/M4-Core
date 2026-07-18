@@ -18,6 +18,7 @@ class Emergency(commands.Cog):
 
     def _is_rate_limited(self, user_id: int) -> bool:
         now = time.time()
+        self._expire_stale(now)
         if user_id in self._rate_limited:
             if now - self._rate_limited[user_id] < RATE_LIMIT_SECONDS:
                 return True
@@ -31,6 +32,14 @@ class Emergency(commands.Cog):
             return True
         self._attempts[user_id].append(now)
         return False
+
+    def _expire_stale(self, now: float) -> None:
+        stale = [uid for uid, ts in self._rate_limited.items() if now - ts >= RATE_LIMIT_SECONDS]
+        for uid in stale:
+            del self._rate_limited[uid]
+        stale = [uid for uid, times in self._attempts.items() if not times or now - times[-1] >= WINDOW_SECONDS]
+        for uid in stale:
+            del self._attempts[uid]
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

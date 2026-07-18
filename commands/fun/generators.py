@@ -40,7 +40,7 @@ class Generators(commands.Cog):
                 color=discord.Color.red()
             ))
 
-    @commands.command(name="dice", aliases=["roll"], description="roll dice", help="Roll dice. Formats: !roll 6 (single die), !roll 2d6 (two six-sided), !roll 3d20 (three twenty-sided). Max 20 dice, max 1000 sides.")
+    @commands.hybrid_command(name="dice", aliases=["roll"], description="roll dice", help="Roll dice. Formats: !roll 6 (single die), !roll 2d6 (two six-sided), !roll 3d20 (three twenty-sided). Max 20 dice, max 1000 sides.")
     @cooldown(1, 3, BucketType.user)
     async def dice(self, ctx, *args):
         formula = " ".join(args) if args else "1d6"

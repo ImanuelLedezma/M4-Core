@@ -580,5 +580,5 @@ class Panel(commands.Cog):
         except Exception:
             import logging; logging.getLogger("panel").exception("failed to start panel")
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Panel(bot))

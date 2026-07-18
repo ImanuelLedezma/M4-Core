@@ -71,7 +71,7 @@ class Eval(commands.Cog):
         embed.set_footer(text=f"exit {'0' if success else '1'}")
         await msg.edit(embed=embed)
 
-    @commands.command(name="eval")
+    @commands.hybrid_command(name="eval")
     async def eval_cmd(self, ctx, *, code: str):
         if not is_admin(ctx.author.id):
             return await ctx.send(embed=discord.Embed(description="⊘ unauthorized.", color=0xff4500))
@@ -94,5 +94,5 @@ class Eval(commands.Cog):
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(embed=discord.Embed(description="⊘ usage: `!eval <code or shell command>`", color=0xff4500))
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(Eval(bot))

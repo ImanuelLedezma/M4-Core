@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from helpers.economy_base import load_bank, save_bank, open_account, debt_prompt
 from helpers.admins_config import is_admin
+from commands.economy.history import add_tx
 WALLET_FLOOR = 250
 
 class Transfers(commands.Cog):
@@ -94,6 +95,8 @@ class Transfers(commands.Cog):
         data[rec_id]["wallet"] += amount
         save_bank(data)
 
+        add_tx(ctx.author.id, "transfer", -amount, f"to {member.name}")
+        add_tx(member.id, "transfer", amount, f"from {ctx.author.name}")
         await ctx.send(embed=discord.Embed(
             description=f"╼ **transfer complete!** ╾\n\nsent **⌬ {amount:,}** to {member.display_name.lower()}",
             color=0x2b2d31
