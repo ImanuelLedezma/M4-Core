@@ -13,10 +13,10 @@ MAX_EMBED = 4000
 def _load_cfg():
     path = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config.yaml"))
     with open(path) as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 _cfg = _load_cfg()
-CONSOLE_CHANNEL_ID = _cfg["channels"]["console"]
+CONSOLE_CHANNEL_ID = _cfg.get("channels", {}).get("console", 0)
 
 def _truncate(text: str) -> str:
     if len(text) <= MAX_EMBED:

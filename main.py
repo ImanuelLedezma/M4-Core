@@ -118,6 +118,15 @@ class M4Core(commands.Bot):
         if failed_list:
             log.warning("failed modules: %s", ", ".join(failed_list))
 
+        try:
+            from safety.check_codebase_consistency import has_issues
+            if has_issues():
+                log.warning("safety checks found codebase issues — run 'python -m safety.check_codebase_consistency' for details")
+            else:
+                log.info("safety checks passed")
+        except Exception as e:
+            log.warning("safety checks skipped: %s", e)
+
     async def on_ready(self):
         print(BANNER)
         log.info("logged in as %s (id: %s)", self.user, self.user.id)
