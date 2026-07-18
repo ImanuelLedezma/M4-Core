@@ -186,9 +186,48 @@ class M4Core(commands.Bot):
                 color=0xff4500
             ), delete_after=5)
 
+def _check_legacy_and_migrate():
+    from safety.checks import find_legacy_msgpack, run_migration
+    legacy = find_legacy_msgpack()
+    if not legacy:
+        return
+
+    print(BANNER)
+    print("  ┌─────────────────────────────────────────────────────┐")
+    print("  │  LEGACY MSGPACK DATA DETECTED                       │")
+    print("  │  The bot now uses SQLite instead of msgpack files.  │")
+    print("  │                                                     │")
+    print(f"  │  {len(legacy)} file(s) found in data/ directory:              │")
+    for name in legacy:
+        print(f"  │    • {name:<51}│")
+    print("  │                                                     │")
+    print("  │  These will be migrated to data/m4.db and renamed   │")
+    print("  │  to *.bak on completion.                            │")
+    print("  └─────────────────────────────────────────────────────┘")
+    print()
+
+    try:
+        answer = input("  Migrate legacy data now? (y/N): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        answer = "n"
+    print()
+
+    if answer == "y":
+        print("  running migration...\n")
+        ok = run_migration()
+        if ok:
+            print("\n  migration complete, starting bot.\n")
+        else:
+            print("\n  migration failed — check errors above. starting bot with existing data.\n")
+    else:
+        print("  skipping migration. run 'python -m safety.migrate_msgpack' manually.\n")
+
+
 bot = M4Core()
 
 if __name__ == "__main__":
+    _check_legacy_and_migrate()
+
     if sys.platform != "win32":
         loop = asyncio.get_event_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):

@@ -12,6 +12,14 @@ CONFIG_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fi
 ADMINS_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "admins.yaml"))
 REQUIRED_CHANNEL_KEYS = ("log", "console", "ai_chat", "dictionary", "confession", "hall_of_fame", "welcome")
 
+LEGACY_FILES = [
+    "bank.msgpack", "shop.msgpack", "inventory.msgpack",
+    "tx_history.msgpack", "afk.msgpack", "rps.msgpack",
+    "reaction_roles.msgpack", "departed.msgpack", "warnings.msgpack",
+    "blacklist.msgpack", "hof_posted.msgpack", "codes.msgpack",
+    "levels.msgpack", "dumbass.msgpack",
+]
+
 _errors: list[str] = []
 _warnings: list[str] = []
 
@@ -101,6 +109,24 @@ def check_env_overrides():
             missing.append(f"{key} ({label})")
     if missing:
         _warnings.append(f"env: missing -- {', '.join(missing)}")
+
+
+def find_legacy_msgpack() -> list[str]:
+    found = []
+    for name in LEGACY_FILES:
+        path = os.path.join(DATA_DIR, name)
+        if os.path.exists(path):
+            found.append(name)
+    return found
+
+
+def run_migration() -> bool:
+    from safety.migrate_msgpack import main as migrate_main
+    try:
+        return migrate_main() == 0
+    except (Exception, SystemExit) as e:
+        print(f"  [FAIL] migration error: {e}")
+        return False
 
 
 def run_all() -> tuple[list[str], list[str]]:
